@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openhive"
+version = "0.0.1"
+authors = [
+  { name="OpenHive Team", email="team@openhive.sh" },
+]
+description = "Core library for implementing H.I.V.E. Protocol compliant agents in Python"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: AGPLv3 License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "pyyaml",
+    "pynacl"
+]
+
+license = { file = "LICENSE" }
+
+[project.urls]
+Homepage = "https://github.com/openhivestack/openhive"
+Issues = "https://github.com/openhivestack/openhive/issues"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["openhive"]

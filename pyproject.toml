@@ -27,8 +27,8 @@ dependencies = [
 license = { file = "LICENSE" }
 
 [project.urls]
-Homepage = "https://github.com/openhivestack/openhive"
-Issues = "https://github.com/openhivestack/openhive/issues"
+Homepage = "https://github.com/openhivestack/python-sdk"
+Issues = "https://github.com/openhivestack/python-sdk/issues"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

@@ -3,7 +3,7 @@ from uvicorn import run
 from .agent import Agent
 
 
-class AgentHttpServer:
+class AgentServer:
     def __init__(self, agent: Agent):
         self.agent = agent
         self.app = FastAPI()

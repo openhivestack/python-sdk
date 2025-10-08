@@ -1,4 +1,4 @@
-# @open-hive/core (Python)
+# OpenHive (Python SDK)
 
 The official core library for building agents on the H.I.V.E. Protocol in Python.
 This package provides the essential tools to bootstrap a protocol-compliant agent, handle secure messaging, and manage agent capabilities, with a focus on developer experience and flexibility.
@@ -6,7 +6,7 @@ This package provides the essential tools to bootstrap a protocol-compliant agen
 ## Features
 
 - **High-Level Agent Class**: A simple, powerful `Agent` class to get started in minutes.
-- **Flexible Deployment**: A decoupled `AgentHttpServer` (using FastAPI) allows you to run the agent as a standalone server or integrate its logic into existing frameworks.
+- **Flexible Deployment**: A decoupled `AgentServer` (using FastAPI) allows you to run the agent as a standalone server or integrate its logic into existing frameworks.
 - **Simplified Capability Management**: An intuitive decorator for registering handlers for your agent's skills.
 - **Protocol Compliance**: Built-in, protocol-compliant message creation, validation, and cryptographic handling (Ed25519).
 - **Configuration-Driven**: Easily configure your agent using a `.hive.yml` file.

@@ -102,5 +102,5 @@ class Agent:
         return self.config.port
         
     def create_server(self):
-        from .agent_http_server import AgentHttpServer
-        return AgentHttpServer(self)
+        from .agent_server import AgentServer
+        return AgentServer(self)

@@ -10,7 +10,7 @@ class AgentCapability(BaseModel):
     output: Dict[str, Any]
 
 
-class AgentConfig(BaseModel):
+class AgentConfigStruct(BaseModel):
     id: str
     name: str
     description: str
@@ -31,7 +31,7 @@ class AgentInfo(BaseModel):
     public_key: str = Field(..., alias="publicKey")
 
 
-class HiveMessageType(str, Enum):
+class AgentMessageType(str, Enum):
     TASK_REQUEST = 'task_request'
     TASK_RESPONSE = 'task_response'
     TASK_UPDATE = 'task_update'
@@ -63,9 +63,9 @@ class TaskErrorData(BaseModel):
     retry: bool
 
 
-class HiveMessage(BaseModel):
+class AgentMessage(BaseModel):
     from_id: str = Field(..., alias='from')
     to: str
-    type: HiveMessageType
+    type: AgentMessageType
     data: Dict[str, Any]
     sig: str

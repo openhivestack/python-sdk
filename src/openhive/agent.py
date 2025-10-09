@@ -1,9 +1,9 @@
 from typing import Dict, Any, Callable, Awaitable, Optional
-from .config import Config
+from .agent_config import AgentConfig
 from .agent_identity import AgentIdentity
-from .types import HiveMessageType, TaskRequestData, TaskResultData, TaskErrorData, AgentInfo
+from .types import AgentMessageType, TaskRequestData, TaskResultData, TaskErrorData, AgentInfo
 from . import hive_error
-from .registry import AgentRegistry, InMemoryRegistry
+from .agent_registry import AgentRegistry, InMemoryRegistry
 import httpx
 import base64
 
@@ -13,7 +13,7 @@ CapabilityHandler = Callable[[Dict[str, Any]], Awaitable[Dict[str, Any]]]
 class Agent:
     def __init__(
         self,
-        config: Config,
+        config: AgentConfig,
         private_key: bytes = None,
         public_key: bytes = None,
         registry: AgentRegistry = None,
@@ -53,7 +53,7 @@ class Agent:
                 "Signature verification failed.",
             )
 
-        if message.get("type") != HiveMessageType.TASK_REQUEST.value:
+        if message.get("type") != AgentMessageType.TASK_REQUEST.value:
             return self._create_error_response(
                 task_id,
                 hive_error.INVALID_MESSAGE_FORMAT,

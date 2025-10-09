@@ -1,24 +1,24 @@
 import json
 from yaml import safe_load
-from .types import AgentConfig
+from .types import AgentConfigStruct
 
 
-class ConfigError(Exception):
+class AgentConfigError(Exception):
     pass
 
 
-class Config:
+class AgentConfig:
     def __init__(self, config_data: dict):
-        self._config = AgentConfig(**config_data)
+        self._config = AgentConfigStruct(**config_data)
 
     @classmethod
-    def from_json(cls, file_path: str) -> 'Config':
+    def from_json(cls, file_path: str) -> 'AgentConfig':
         with open(file_path, 'r') as f:
             config_data = json.load(f)
         return cls(config_data)
 
     @classmethod
-    def from_yaml(cls, file_path: str) -> 'Config':
+    def from_yaml(cls, file_path: str) -> 'AgentConfig':
         with open(file_path, 'r') as f:
             config_data = safe_load(f)
         return cls(config_data)

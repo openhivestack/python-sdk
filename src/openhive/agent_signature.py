@@ -3,7 +3,7 @@ from nacl.signing import SigningKey, VerifyKey
 from nacl.encoding import RawEncoder
 
 
-class Crypto:
+class AgentSignature:
     @staticmethod
     def generate_key_pair() -> dict:
         """Generates a new Ed25519 key pair."""

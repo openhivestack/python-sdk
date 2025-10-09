@@ -4,15 +4,17 @@ H.I.V.E. Protocol Core SDK for Python
 __version__ = "0.3.0"
 
 from .agent import Agent
-from .config import Config, ConfigError
-from .types import AgentConfig, AgentCapability, HiveMessage, HiveMessageType
+from .agent_config import AgentConfig, AgentConfigError
+from .types import AgentCapability, AgentMessage, AgentMessageType, AgentConfigStruct
+from .agent_signature import AgentSignature
 
 __all__ = [
     "Agent",
-    "Config",
-    "ConfigError",
     "AgentConfig",
+    "AgentConfigError",
     "AgentCapability",
-    "HiveMessage",
-    "HiveMessageType",
+    "AgentMessage",
+    "AgentMessageType",
+    "AgentConfigStruct",
+    "AgentSignature",
 ]

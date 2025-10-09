@@ -1,19 +1,19 @@
 import json
 import uuid
-from .config import Config
-from .crypto import Crypto
-from .types import HiveMessageType
+from .agent_config import AgentConfig
+from .agent_signature import AgentSignature
+from .types import AgentMessageType
 
 
 class AgentIdentity:
-    def __init__(self, config: Config, private_key: bytes, public_key: bytes):
+    def __init__(self, config: AgentConfig, private_key: bytes, public_key: bytes):
         self.config = config
         self.private_key = private_key
         self.public_key = public_key
 
     @classmethod
-    def create(cls, config: Config):
-        keys = Crypto.generate_key_pair()
+    def create(cls, config: AgentConfig):
+        keys = AgentSignature.generate_key_pair()
         return cls(config, keys["private_key"], keys["public_key"])
 
     def id(self) -> str:
@@ -25,7 +25,7 @@ class AgentIdentity:
     def _create_message(
         self,
         to_agent_id: str,
-        msg_type: HiveMessageType,
+        msg_type: AgentMessageType,
         data: dict,
     ) -> dict:
         message_without_sig = {
@@ -44,7 +44,7 @@ class AgentIdentity:
             separators=(',', ':')
         ).encode('utf-8')
         
-        signature = Crypto.sign(message_json, self.private_key)
+        signature = AgentSignature.sign(message_json, self.private_key)
         
         return {**message_without_sig, "sig": signature}
 
@@ -61,7 +61,7 @@ class AgentIdentity:
         }
         return self._create_message(
             to_agent_id,
-            HiveMessageType.TASK_REQUEST,
+            AgentMessageType.TASK_REQUEST,
             data,
         )
 
@@ -78,7 +78,7 @@ class AgentIdentity:
         }
         return self._create_message(
             to_agent_id,
-            HiveMessageType.TASK_RESULT,
+            AgentMessageType.TASK_RESULT,
             data,
         )
 
@@ -98,7 +98,7 @@ class AgentIdentity:
         }
         return self._create_message(
             to_agent_id,
-            HiveMessageType.TASK_ERROR,
+            AgentMessageType.TASK_ERROR,
             data,
         )
 
@@ -115,7 +115,7 @@ class AgentIdentity:
                 separators=(',', ':'),
             ).encode('utf-8')
         )
-        return Crypto.verify(
+        return AgentSignature.verify(
             message_json,
             signature,
             public_key,

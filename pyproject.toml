@@ -1,17 +1,6 @@
-[tool.poetry.dependencies]
-python = "^3.11"
-pydantic = "^2.5.3"
-pyyaml = "^6.0.1"
-pynacl = "^1.5.0"
-fastapi = "^0.109.0"
-uvicorn = "^0.27.0.post1"
-python-dotenv = "^1.0.1"
-httpx = "^0.26.0"
-yarl = "^1.9.4"
-
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "openhive"
@@ -28,11 +17,14 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "fastapi",
-    "uvicorn",
-    "pydantic",
-    "pyyaml",
-    "pynacl"
+    "pydantic>=2.5.3",
+    "pyyaml>=6.0.1",
+    "pynacl>=1.5.0",
+    "fastapi>=0.109.0",
+    "uvicorn>=0.27.0.post1",
+    "python-dotenv>=1.0.1",
+    "httpx>=0.26.0",
+    "yarl>=1.9.4"
 ]
 
 license = { file = "LICENSE" }

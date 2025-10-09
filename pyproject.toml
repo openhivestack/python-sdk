@@ -15,7 +15,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "openhive"
-version = "0.1.1"
+version = "0.2.0"
 authors = [
   { name="OpenHive Team", email="team@openhive.sh" },
 ]

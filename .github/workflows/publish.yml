@@ -1,6 +1,6 @@
 # This workflow will build and publish the python-sdk package to PyPI when a commit is pushed to the main branch.
 
-name: Publish Python Package to PyPI
+name: Publish
 
 on:
   release:

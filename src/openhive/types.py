@@ -15,9 +15,20 @@ class AgentConfig(BaseModel):
     name: str
     description: str
     version: str
-    port: int = 11100
+    endpoint: str
+    public_key: Optional[str] = Field(None, alias="publicKey")
     log_level: str = Field("info", alias="logLevel")
     capabilities: List[AgentCapability]
+
+
+class AgentInfo(BaseModel):
+    id: str
+    name: str
+    description: str
+    version: str
+    endpoint: str
+    capabilities: List[AgentCapability]
+    public_key: str = Field(..., alias="publicKey")
 
 
 class HiveMessageType(str, Enum):
@@ -28,6 +39,8 @@ class HiveMessageType(str, Enum):
     TASK_ERROR = 'task_error'
     CAPABILITY_QUERY = 'capability_query'
     CAPABILITY_RESPONSE = 'capability_response'
+    HEARTBEAT = 'heartbeat'
+    AGENT_IDENTITY = 'agent_identity'
 
 
 class TaskRequestData(BaseModel):
@@ -51,7 +64,7 @@ class TaskErrorData(BaseModel):
 
 
 class HiveMessage(BaseModel):
-    from_agent: str = Field(..., alias='from')
+    from_id: str = Field(..., alias='from')
     to: str
     type: HiveMessageType
     data: Dict[str, Any]

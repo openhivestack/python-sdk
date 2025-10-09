@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from uvicorn import run
+from yarl import URL
 from .agent import Agent
 
 
@@ -37,14 +38,14 @@ class AgentServer:
                     status_code=400,
                     detail="'from' field is missing in message"
                 )
-                
-            sender_public_key = self.agent.get_peer_public_key(sender_id)
+
+            sender_public_key = await self.agent.get_public_key(sender_id)
             if not sender_public_key:
                 raise HTTPException(
                     status_code=401,
                     detail="Sender public key not found. Peer not configured.",
                 )
-            
+
             response_data = await self.agent.handle_task_request(
                 message,
                 sender_public_key,
@@ -70,5 +71,5 @@ class AgentServer:
                 return response_message
 
     def start(self, port: int = None):
-        listen_port = port or self.agent.get_port()
+        listen_port = port or int(URL(self.agent.get_endpoint()).port)
         run(self.app, host="0.0.0.0", port=listen_port)

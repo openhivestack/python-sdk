@@ -7,9 +7,10 @@ This package provides the essential tools to bootstrap a protocol-compliant agen
 
 - **High-Level Agent Class**: A simple, powerful `Agent` class to get started in minutes.
 - **Flexible Deployment**: A decoupled `AgentServer` (using FastAPI) allows you to run the agent as a standalone server or integrate its logic into existing frameworks.
-- **Simplified Capability Management**: An intuitive decorator for registering handlers for your agent's skills.
+- **Service Discovery**: Built-in support for an `AgentRegistry` for discovering and communicating with other agents.
+- **Simplified Agent Communication**: A high-level `send_task` method for easy and secure agent-to-agent communication.
 - **Protocol Compliance**: Built-in, protocol-compliant message creation, validation, and cryptographic handling (Ed25519).
-- **Configuration-Driven**: Easily configure your agent using a `.hive.yml` file.
+- **Configuration-Driven**: Easily configure your agent using a `.hive.yml` or JSON file.
 
 ## Installation
 
@@ -26,19 +27,19 @@ Here's how to create a complete, server-based agent in just a few steps.
 Create a `.hive.yml` file in your project root:
 
 ```yaml
-id: 'hive:agentid:hello-world-agent-py'
-name: 'HelloWorldAgentPy'
-description: 'A simple Python agent that provides greetings.'
-version: '0.1.0'
-port: 11200
+id: "hive:agentid:hello-world-agent-py"
+name: "HelloWorldAgentPy"
+description: "A simple Python agent that provides greetings."
+version: "0.1.0"
+endpoint: "http://localhost:11200"
 
 capabilities:
-  - id: 'hello-world-python'
-    description: 'Returns a greeting for a given name.'
+  - id: "hello-world-python"
+    description: "Returns a greeting for a given name."
     input:
-      name: 'string'
+      name: "string"
     output:
-      response: 'string'
+      response: "string"
 ```
 
 ### 2. Create Your Agent File
@@ -46,83 +47,95 @@ capabilities:
 Create a `main.py` file:
 
 ```python
+import asyncio
 from openhive import Agent, Config
 
-# 1. Load agent configuration from .hive.yml
-config = Config()
+async def main():
+    # 1. Load agent configuration from .hive.yml
+    config = Config.from_yaml('.hive.yml')
 
-# 2. Create a new agent instance
-agent = Agent(config)
+    # 2. Create a new agent instance
+    agent = Agent(config)
 
-# 3. Register a handler for the 'hello-world-python' capability
-@agent.capability("hello-world-python")
-async def hello_world(params: dict):
-    name = params.get("name")
-    if not name:
-        raise ValueError("The 'name' parameter is required.")
+    # 3. Define a handler for the 'hello-world-python' capability
+    async def hello_world(params: dict):
+        name = params.get("name")
+        if not name:
+            raise ValueError("The 'name' parameter is required.")
+        return {"response": f"Hello, {name}!"}
 
-    # Return the result directly
-    return {"response": f"Hello, {name}!"}
+    # 4. Register the handler
+    agent.capability("hello-world-python", hello_world)
 
-# 4. Create and start the HTTP server
-if __name__ == "__main__":
+    # 5. Register the agent in the network (optional, for discovery)
+    await agent.register()
+
+    print(f"Agent {agent.identity.id()} registered with capabilities.")
+
+    # 6. Create and start the HTTP server
     server = agent.create_server()
-    server.start()
-    # Agent is now running and ready for tasks.
+    # server.start() is blocking, so you might run it in a separate process
+    # or use an ASGI server like uvicorn directly for more control.
+    print(f"Server starting at {agent.get_endpoint()}")
+    # For this example, we won't block with server.start()
+    # In a real application, you would run the server.
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
 ### 3. Run Your Agent
 
-You can now run your `main.py` file. Your agent will start an HTTP server on port `11200` and be ready to accept `task_request` messages.
+You can now run your `main.py` file. Your agent will start an HTTP server on the specified endpoint and be ready to accept `task_request` messages.
 
-## Advanced Usage
+## Communicating with Other Agents
 
-### Integrating with Existing Frameworks (e.g., FastAPI)
-
-The `Agent` class is decoupled from the HTTP server, allowing you to integrate it into your own application.
+The SDK makes it simple to communicate with other agents using the `send_task` method, which handles discovery, message creation, signing, and response verification.
 
 ```python
-from fastapi import FastAPI
-from openhive import Agent, Config
+import asyncio
+from openhive import Agent, Config, InMemoryRegistry
+from openhive.types import AgentInfo
 
-# Agent setup is the same as above
-config = Config()
-agent = Agent(config)
-# ... register capabilities ...
+async def communicate():
+    # --- Agent 1 Setup ---
+    config1 = Config.from_yaml('agent1.yml')
+    agent1 = Agent(config1)
 
-app = FastAPI()
+    async def echo(params: dict):
+        return {"echo": params}
 
-@app.post("/tasks")
-async def handle_tasks(message: dict):
-    # You are responsible for peer public key management
-    sender_public_key = get_public_key_for_agent(message.get("from"))
+    agent1.capability("echo", echo)
 
-    response_data = await agent.handle_task_request(message, sender_public_key)
 
-    # You are responsible for creating and signing the response message
-    response_message = create_and_sign_response_message(response_data)
+    # --- Agent 2 Setup ---
+    config2 = Config.from_yaml('agent2.yml')
+    agent2 = Agent(config2)
 
-    # Return the signed message
-    return response_message
-```
 
-### Communicating with Other Agents
+    # --- Communication ---
+    # Agents can share a registry for discovery
+    registry = InMemoryRegistry()
 
-Configure peers to enable agent-to-agent communication. The public and private keys are raw bytes.
+    agent1_info = AgentInfo(**agent1.config.info(), publicKey=agent1.identity.get_public_key_b64())
+    await registry.add(agent1_info)
+    agent2_info = AgentInfo(**agent2.config.info(), publicKey=agent2.identity.get_public_key_b64())
+    await registry.add(agent2_info)
 
-```python
-# Add a peer agent's public key (as raw bytes)
-agent.add_peer("hive:agentid:some-peer-id", b'peer-public-key-bytes')
+    agent1.registry = registry
+    agent2.registry = registry # Inject registry
 
-# Get the agent's identity to create messages
-identity = agent.get_identity()
+    # Agent 2 sends a task to Agent 1
+    result = await agent2.send_task(
+        to_agent_id=agent1.identity.id(),
+        capability="echo",
+        params={"message": "Hello from Agent 2"}
+    )
 
-# Create a task request message to send to the peer
-task_request = identity.createTaskRequest(
-  "hive:agentid:some-peer-id",
-  "some-capability",
-  {"parameter": "value"}
-)
+    print("Response from Agent 1:", result)
 
-# Now you can send this `task_request` dictionary to the peer's /tasks endpoint.
+if __name__ == "__main__":
+    # You would need agent1.yml and agent2.yml files for this example.
+    # asyncio.run(communicate())
+    pass
 ```

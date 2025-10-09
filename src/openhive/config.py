@@ -1,6 +1,5 @@
-import os
-import yaml
-from pydantic import ValidationError
+import json
+from yaml import safe_load
 from .types import AgentConfig
 
 
@@ -9,25 +8,20 @@ class ConfigError(Exception):
 
 
 class Config:
-    def __init__(self, file_path: str = None):
-        if file_path is None:
-            file_path = os.path.join(os.getcwd(), '.hive.yml')
-        
-        if not os.path.exists(file_path):
-            raise ConfigError(f"Configuration file not found at: {file_path}")
+    def __init__(self, config_data: dict):
+        self._config = AgentConfig(**config_data)
 
-        try:
-            with open(file_path, 'r') as f:
-                config_data = yaml.safe_load(f)
-            
-            self._config = AgentConfig(**config_data)
+    @classmethod
+    def from_json(cls, file_path: str) -> 'Config':
+        with open(file_path, 'r') as f:
+            config_data = json.load(f)
+        return cls(config_data)
 
-        except yaml.YAMLError as e:
-            raise ConfigError(f"Error parsing YAML file: {e}")
-        except ValidationError as e:
-            raise ConfigError(f"Configuration validation error: {e}")
-        except Exception as e:
-            raise ConfigError(f"An unexpected error occurred while loading config: {e}")
+    @classmethod
+    def from_yaml(cls, file_path: str) -> 'Config':
+        with open(file_path, 'r') as f:
+            config_data = safe_load(f)
+        return cls(config_data)
 
     @property
     def id(self) -> str:
@@ -44,17 +38,23 @@ class Config:
     @property
     def version(self) -> str:
         return self._config.version
-        
+
     @property
-    def port(self) -> int:
-        return self._config.port
+    def endpoint(self) -> str:
+        return self._config.endpoint
 
     @property
     def capabilities(self):
         return self._config.capabilities
 
     def has_capability(self, capability_id: str) -> bool:
-        return any(cap.id == capability_id for cap in self.capabilities)
+        return any(cap.id == capability_id for cap in self._config.capabilities)
 
-    def get_full_config(self) -> AgentConfig:
-        return self._config
+    def to_dict(self):
+        return self._config.dict(by_alias=True)
+
+    def info(self):
+        return self._config.dict(
+            by_alias=True,
+            exclude={'log_level', 'public_key'}
+        )

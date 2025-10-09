@@ -1,4 +1,4 @@
-from typing import Dict, Any, Callable, Awaitable
+from typing import Dict, Any, Callable, Awaitable, Optional
 from .config import Config
 from .agent_identity import AgentIdentity
 from .types import HiveMessageType, TaskRequestData, TaskResultData, TaskErrorData, AgentInfo
@@ -28,11 +28,16 @@ class Agent:
 
         self._capability_handlers: Dict[str, CapabilityHandler] = {}
 
-    def capability(self, capability_id: str, handler: CapabilityHandler):
-        if not self.config.has_capability(capability_id):
-            raise ValueError(f"Capability '{capability_id}' is not defined.")
-        self._capability_handlers[capability_id] = handler
-        return self
+    def capability(self, capability_id: str, handler: Optional[CapabilityHandler] = None):
+        def decorator(func: CapabilityHandler):
+            if not self.config.has_capability(capability_id):
+                raise ValueError(f"Capability '{capability_id}' is not defined.")
+            self._capability_handlers[capability_id] = func
+            return func
+
+        if handler:
+            return decorator(handler)
+        return decorator
 
     async def handle_task_request(
         self,

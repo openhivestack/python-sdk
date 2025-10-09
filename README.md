@@ -57,22 +57,21 @@ async def main():
     # 2. Create a new agent instance
     agent = Agent(config)
 
-    # 3. Define a handler for the 'hello-world-python' capability
+    # 3. Define and register a handler for the 'hello-world-python' capability
+    #    You can use the decorator style for cleaner code.
+    @agent.capability("hello-world-python")
     async def hello_world(params: dict):
         name = params.get("name")
         if not name:
             raise ValueError("The 'name' parameter is required.")
         return {"response": f"Hello, {name}!"}
 
-    # 4. Register the handler
-    agent.capability("hello-world-python", hello_world)
-
-    # 5. Register the agent in the network (optional, for discovery)
+    # 4. Register the agent in the network (optional, for discovery)
     await agent.register()
 
     print(f"Agent {agent.identity.id()} registered with capabilities.")
 
-    # 6. Create and start the HTTP server
+    # 5. Create and start the HTTP server
     server = agent.create_server()
     # server.start() is blocking, so you might run it in a separate process
     # or use an ASGI server like uvicorn directly for more control.
@@ -88,6 +87,31 @@ if __name__ == "__main__":
 
 You can now run your `main.py` file. Your agent will start an HTTP server on the specified endpoint and be ready to accept `task_request` messages.
 
+## Registering Capabilities
+
+You can register capabilities in two ways:
+
+### 1. Using the Decorator (Recommended)
+
+```python
+@agent.capability("my-capability")
+async def my_handler(params: dict):
+    # ... handler logic ...
+    return {"result": "done"}
+```
+
+### 2. Using a Direct Function Call
+
+This is useful for registering handlers dynamically.
+
+```python
+async def another_handler(params: dict):
+    # ... handler logic ...
+    return {"result": "done"}
+
+agent.capability("another-capability", another_handler)
+```
+
 ## Communicating with Other Agents
 
 The SDK makes it simple to communicate with other agents using the `send_task` method, which handles discovery, message creation, signing, and response verification.
@@ -102,10 +126,9 @@ async def communicate():
     config1 = Config.from_yaml('agent1.yml')
     agent1 = Agent(config1)
 
+    @agent1.capability("echo")
     async def echo(params: dict):
         return {"echo": params}
-
-    agent1.capability("echo", echo)
 
 
     # --- Agent 2 Setup ---

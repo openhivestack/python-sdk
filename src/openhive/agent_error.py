@@ -11,6 +11,20 @@ TASK_ERROR = "task_error"
 
 
 class AgentError(Exception):
-    def __init__(self, message: str):
+    def __init__(self, message: str, code: str = PROCESSING_FAILED, retry: bool = False):
         super().__init__(message)
         self.message = message
+        self.code = code
+        self.retry = retry
+        self.http_status = 500
+
+        if code == INVALID_SIGNATURE:
+            self.http_status = 401
+        elif code in [CAPABILITY_NOT_FOUND, AGENT_NOT_FOUND]:
+            self.http_status = 404
+        elif code in [INVALID_PARAMETERS, INVALID_MESSAGE_FORMAT, CONFIG_ERROR]:
+            self.http_status = 400
+        elif code == RATE_LIMITED:
+            self.http_status = 429
+        elif code == RESOURCE_UNAVAILABLE:
+            self.http_status = 503

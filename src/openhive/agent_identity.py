@@ -55,9 +55,10 @@ class AgentIdentity:
         to_agent_id: str,
         capability: str,
         params: dict,
+        task_id: str = None,
     ) -> dict:
         data = {
-            "task_id": str(uuid.uuid4()),
+            "task_id": task_id or str(uuid.uuid4()),
             "capability": capability,
             "params": params,
         }

@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from uvicorn import run
 from yarl import URL
 from .agent import Agent
+from .types import AgentInfo
 
 
 class AgentServer:
@@ -13,7 +14,7 @@ class AgentServer:
     def _setup_routes(self):
         @self.app.get("/status")
         async def get_status():
-            identity = self.agent.get_identity()
+            identity = self.agent.identity()
             return {
                 "agentId": identity.id(),
                 "status": "ok",
@@ -22,13 +23,56 @@ class AgentServer:
 
         @self.app.get("/capabilities")
         async def get_capabilities():
-            identity = self.agent.get_identity()
+            identity = self.agent.identity()
             return {
                 "agentId": identity.id(),
                 "capabilities": [
                     cap.dict() for cap in identity.config.capabilities
                 ],
             }
+
+        @self.app.post("/registry/add", status_code=201)
+        async def add_agent_to_registry(agent_info: AgentInfo):
+            try:
+                await self.agent.registry.add(agent_info)
+                return agent_info
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e))
+
+        @self.app.get("/registry")
+        async def list_agents_in_registry():
+            try:
+                agents = await self.agent.registry.list()
+                return agents
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e))
+
+        @self.app.get("/registry/search")
+        async def search_agents_in_registry(q: str):
+            try:
+                results = await self.agent.registry.search(q)
+                return results
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e))
+
+        @self.app.get("/registry/{agent_id}")
+        async def get_agent_from_registry(agent_id: str):
+            try:
+                agent = await self.agent.registry.get(agent_id)
+                if agent:
+                    return agent
+                else:
+                    raise HTTPException(status_code=404, detail="Agent not found")
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e))
+
+        @self.app.delete("/registry/{agent_id}", status_code=204)
+        async def remove_agent_from_registry(agent_id: str):
+            try:
+                await self.agent.registry.remove(agent_id)
+                return
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e))
 
         @self.app.post("/tasks")
         async def post_tasks(message: dict):
@@ -39,19 +83,19 @@ class AgentServer:
                     detail="'from' field is missing in message"
                 )
 
-            sender_public_key = await self.agent.get_public_key(sender_id)
+            sender_public_key = await self.agent.public_key(sender_id)
             if not sender_public_key:
                 raise HTTPException(
                     status_code=401,
                     detail="Sender public key not found. Peer not configured.",
                 )
 
-            response_data = await self.agent.handle_task_request(
+            response_data = await self.agent.process(
                 message,
                 sender_public_key,
             )
 
-            identity = self.agent.get_identity()
+            identity = self.agent.identity()
 
             if "error" in response_data:
                 response_message = identity.createTaskError(
@@ -71,5 +115,5 @@ class AgentServer:
                 return response_message
 
     def start(self, port: int = None):
-        listen_port = port or int(URL(self.agent.get_endpoint()).port)
+        listen_port = port or int(URL(self.agent.endpoint()).port)
         run(self.app, host="0.0.0.0", port=listen_port)

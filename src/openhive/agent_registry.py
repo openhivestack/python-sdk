@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 from .types import AgentInfo
+from .query_parser import QueryParser
 
 
 class AgentRegistry(ABC):
@@ -20,6 +21,10 @@ class AgentRegistry(ABC):
     async def list(self) -> List[AgentInfo]:
         pass
 
+    @abstractmethod
+    async def search(self, query: str) -> List[AgentInfo]:
+        pass
+
 
 class InMemoryRegistry(AgentRegistry):
     def __init__(self):
@@ -37,3 +42,42 @@ class InMemoryRegistry(AgentRegistry):
 
     async def list(self) -> List[AgentInfo]:
         return list(self._agents.values())
+
+    async def search(self, query: str) -> List[AgentInfo]:
+        parsed_query = QueryParser.parse(query)
+        agents = list(self._agents.values())
+
+        if not query or not query.strip():
+            return agents
+
+        def matches(agent: AgentInfo) -> bool:
+            general_match = (
+                not parsed_query.general_filters or
+                all(
+                    any(
+                        filter.term.lower() in getattr(agent, field, '').lower()
+                        for field in filter.fields
+                        if isinstance(getattr(agent, field, None), str)
+                    )
+                    for filter in parsed_query.general_filters
+                )
+            )
+
+            field_match = (
+                not parsed_query.field_filters or
+                all(
+                    (
+                        filter.value.lower() in getattr(agent, filter.field, '').lower()
+                        if filter.operator == 'includes' and isinstance(getattr(agent, filter.field, None), str)
+                        else any(
+                            cap.id.lower() == filter.value.lower()
+                            for cap in agent.capabilities
+                        )
+                    )
+                    for filter in parsed_query.field_filters
+                )
+            )
+
+            return general_match and field_match
+
+        return [agent for agent in agents if matches(agent)]

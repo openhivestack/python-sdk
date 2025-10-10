@@ -1,10 +1,11 @@
-from typing import Dict, Any, Callable, Awaitable, Optional
+from typing import Dict, Any, Callable, Awaitable, List
 import base64
 import httpx
 from .agent_config import AgentConfig
 from .agent_identity import AgentIdentity
 from .types import AgentMessageType, TaskRequestData, TaskResultData, TaskErrorData, AgentInfo
-from . import agent_error
+from .agent_error import AgentError, INVALID_SIGNATURE, INVALID_MESSAGE_FORMAT, INVALID_PARAMETERS
+from .agent_error import CAPABILITY_NOT_FOUND, PROCESSING_FAILED
 from .agent_registry import AgentRegistry, InMemoryRegistry
 
 CapabilityHandler = Callable[[Dict[str, Any]], Awaitable[Dict[str, Any]]]
@@ -15,7 +16,7 @@ class Agent:
         self.config = AgentConfig(config)
         self.identity = AgentIdentity.create(self.config)
         self._capability_handlers = {}
-        self.registry = registry if registry else InMemoryRegistry()
+        self.registry: AgentRegistry = registry if registry else InMemoryRegistry()
 
     def capability(self, capability_id: str, handler=None):
         if not self.config.has_capability(capability_id):
@@ -31,24 +32,26 @@ class Agent:
             return decorator(handler)
         return decorator
 
-    async def handle_task_request(
+    async def process(
         self,
         message: dict,
-        sender_public_key: bytes,
+        sender_public_key: str,
     ) -> dict:
         task_id = message.get("data", {}).get("task_id", "unknown")
 
-        if not self.identity.verify_message(message, sender_public_key):
+        if not self.identity.verify_message(
+            message, base64.b64decode(sender_public_key)
+        ):
             return self._create_error_response(
                 task_id,
-                agent_error.INVALID_SIGNATURE,
+                INVALID_SIGNATURE,
                 "Signature verification failed.",
             )
 
         if message.get("type") != AgentMessageType.TASK_REQUEST.value:
             return self._create_error_response(
                 task_id,
-                agent_error.INVALID_MESSAGE_FORMAT,
+                INVALID_MESSAGE_FORMAT,
                 "Invalid message type.",
             )
 
@@ -57,7 +60,7 @@ class Agent:
         except Exception as e:
             return self._create_error_response(
                 task_id,
-                agent_error.INVALID_PARAMETERS,
+                INVALID_PARAMETERS,
                 f"Invalid task data: {e}",
             )
 
@@ -65,7 +68,7 @@ class Agent:
         if not handler:
             return self._create_error_response(
                 task_id,
-                agent_error.CAPABILITY_NOT_FOUND,
+                CAPABILITY_NOT_FOUND,
                 f"Capability '{task_data.capability}' not found.",
             )
 
@@ -75,7 +78,7 @@ class Agent:
         except Exception as e:
             return self._create_error_response(
                 task_id,
-                agent_error.PROCESSING_FAILED,
+                PROCESSING_FAILED,
                 str(e),
             )
 
@@ -89,27 +92,50 @@ class Agent:
             retry=False
         ).dict()
 
-    async def register(self):
+    async def register(self, registry_endpoint: str = None):
         agent_info = AgentInfo(
             **self.config.info(),
             publicKey=self.identity.get_public_key_b64(),
         )
         await self.registry.add(agent_info)
 
-    async def get_public_key(self, agent_id: str) -> bytes | None:
+        if registry_endpoint:
+            try:
+                async with httpx.AsyncClient() as client:
+                    await client.post(
+                        f"{registry_endpoint}/registry/add",
+                        json=agent_info.dict(by_alias=True),
+                    )
+            except Exception as e:
+                raise AgentError(
+                    f"Failed to register with remote registry at {registry_endpoint}: {e}"
+                )
+
+    async def search(self, query: str, registry_endpoint: str) -> List[AgentInfo]:
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"{registry_endpoint}/registry/search", params={"q": query}
+                )
+                response.raise_for_status()
+                results_dict = response.json()
+                return [AgentInfo(**info) for info in results_dict]
+        except Exception as e:
+            raise AgentError(
+                f"Failed to search for agents with query '{query}' from registry at {registry_endpoint}: {e}"
+            )
+
+    async def public_key(self, agent_id: str) -> str | None:
         agent_info = await self.registry.get(agent_id)
         if agent_info:
-            return base64.b64decode(agent_info.public_key)
+            return agent_info.public_key
         return None
 
-    def get_identity(self) -> AgentIdentity:
-        return self.identity
-
-    def get_endpoint(self) -> str:
+    def endpoint(self) -> str:
         return self.config.endpoint
 
     async def send_task(
-        self, to_agent_id: str, capability: str, params: dict
+        self, to_agent_id: str, capability: str, params: dict, task_id: str = None
     ) -> dict:
         target_agent = await self.registry.get(to_agent_id)
         if not target_agent:
@@ -122,6 +148,7 @@ class Agent:
             to_agent_id,
             capability,
             params,
+            task_id,
         )
 
         async with httpx.AsyncClient() as client:
@@ -135,7 +162,7 @@ class Agent:
             response_data = response.json()
 
             if not self.identity.verify_message(
-                response_data, target_agent.publicKey.encode('utf-8')
+                response_data, base64.b64decode(target_agent.publicKey)
             ):
                 raise Exception("Response signature verification failed.")
 

@@ -101,6 +101,17 @@ if __name__ == "__main__":
 
 You can now run your `main.py` file. Your agent will start an HTTP server on the specified endpoint and be ready to accept `task_request` messages.
 
+## Agent as a Registry
+
+The `AgentServer` now includes a full set of RESTful endpoints that expose the agent's internal registry, allowing any agent to serve as a discovery hub for a cluster of other agents. This enables agents to dynamically register, deregister, and discover each other over the network.
+
+### Registry API Endpoints
+
+- `POST /registry/add`: Registers an agent. The request body should be an `AgentInfo` object.
+- `GET /registry`: Returns a list of all registered agents.
+- `GET /registry/{agent_id}`: Retrieves the details of a single agent by its ID.
+- `DELETE /registry/{agent_id}`: Removes an agent from the registry.
+
 ## Registering Capabilities
 
 You can register capabilities in two ways:
@@ -128,51 +139,118 @@ agent.capability("another-capability", another_handler)
 
 ## Communicating with Other Agents
 
-The SDK makes it simple to communicate with other agents using the `send_task` method, which handles discovery, message creation, signing, and response verification.
+The SDK makes it simple to communicate with other agents using the `send_task` method. For agents to communicate, they must first discover each other. The following example demonstrates a realistic scenario with three agents forming a cluster: one agent acts as a central registry, while the other two register with it and then communicate.
+
+This example assumes you have three separate terminal sessions and the necessary `.hive.yml` and `.env` files for each agent.
+
+### 1. The Registry Agent
+
+This agent's only job is to run and serve as the discovery server for the cluster.
+
+**`registry_agent.py`**
+
+```python
+import uvicorn
+from openhive import Agent
+
+# Create a .hive.yml for this agent listening on port 11200
+# It needs an ID, keys, etc., but no capabilities are required.
+
+if __name__ == "__main__":
+    registry_agent = Agent()
+    server = registry_agent.create_server()
+    print(f"Registry agent is running at {registry_agent.endpoint()}")
+    uvicorn.run(server.app, host="0.0.0.0", port=11200)
+```
+
+Run this agent in your first terminal: `python registry_agent.py`
+
+### 2. The Responder Agent
+
+This agent provides a `greet` capability and registers itself with the Registry Agent upon startup.
+
+**`responder_agent.py`**
 
 ```python
 import asyncio
-from openhive import Agent, AgentConfig, InMemoryRegistry
-from openhive.types import AgentInfo
+import httpx
+import uvicorn
+from openhive import Agent
 
-async def communicate():
-    # --- Agent 1 Setup ---
-    # In a real application, each agent would have its own .hive.yml
-    agent1_config = AgentConfig.load('agent1.yml')
-    agent1 = Agent(agent1_config)
+# Create a .hive.yml for this agent listening on port 11201
+# with a capability called 'greet'.
 
-    @agent1.capability("echo")
-    async def echo(params: dict):
-        return {"echo": params}
+REGISTRY_ENDPOINT = "http://localhost:11200"
 
+responder_agent = Agent()
 
-    # --- Agent 2 Setup ---
-    agent2_config = AgentConfig.load('agent2.yml')
-    agent2 = Agent(agent2_config)
+@responder_agent.capability("greet")
+async def greet(params: dict):
+    return {"message": f"Hello, {params.get('name')}!"}
 
-
-    # --- Communication ---
-    # Agents can share a registry for discovery
-    registry = InMemoryRegistry()
-
-    # The agent.register() method handles creating and adding AgentInfo
-    await agent1.register()
-    await agent2.register()
-
-    agent1.set_registry(registry)
-    agent2.set_registry(registry)
-
-    # Agent 2 sends a task to Agent 1
-    result = await agent2.send_task(
-        to_agent_id=agent1.identity.id(),
-        capability="echo",
-        params={"message": "Hello from Agent 2"}
-    )
-
-    print("Response from Agent 1:", result)
+async def startup():
+    await responder_agent.register(REGISTRY_ENDPOINT)
+    print("Responder agent registered successfully.")
 
 if __name__ == "__main__":
-    # You would need agent1.yml and agent2.yml files for this example.
-    # asyncio.run(communicate())
-    pass
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(startup())
+
+    server = responder_agent.create_server()
+    print(f"Responder agent is running at {responder_agent.endpoint()}")
+    uvicorn.run(server.app, host="0.0.0.0", port=11201)
 ```
+
+Run this agent in your second terminal: `python responder_agent.py`
+
+### 3. The Requester Agent
+
+This agent sends a task to the Responder Agent after discovering it via the Registry Agent.
+
+**`requester_agent.py`**
+
+```python
+import asyncio
+from openhive import Agent
+
+# Create a .hive.yml for this agent listening on port 11202
+
+REGISTRY_ENDPOINT = "http://localhost:11200"
+
+async def main():
+    requester_agent = Agent()
+
+    # Register itself with the registry agent
+    await requester_agent.register(REGISTRY_ENDPOINT)
+
+    # 1. Search for agents with the 'greet' capability
+    print("Searching for agents with 'greet' capability...")
+    search_results = await requester_agent.search(
+        "capability:greet", REGISTRY_ENDPOINT
+    )
+
+    if not search_results:
+        print("No agents found with the 'greet' capability.")
+        return
+
+    responder_info = search_results[0]
+    print(f"Found responder agent: {responder_info.id}")
+
+    # 2. Add the discovered agent to its local registry
+    await requester_agent.registry.add(responder_info)
+
+    # 3. Now, send the task
+    print("Requester sending 'greet' task to responder...")
+    result = await requester_agent.send_task(
+        to_agent_id=responder_info.id,
+        capability="greet",
+        params={"name": "World"}
+    )
+
+    print("Requester received response:", result)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+Run this in a third terminal: `python requester_agent.py`. You should see the successful task exchange!

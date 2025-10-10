@@ -24,7 +24,9 @@ Here's how to create a complete, server-based agent in just a few steps.
 
 ### 1. Configure Your Agent
 
-Create a `.hive.yml` file in your project root:
+Create a `.hive.yml` file in your project root. This file is the single source of truth for your agent's identity and configuration.
+
+The configuration loader supports environment variable substitution using Jinja2 syntax. It automatically loads variables from a `.env` file in your project root.
 
 ```yaml
 id: "hive:agentid:hello-world-agent-py"
@@ -32,6 +34,12 @@ name: "HelloWorldAgentPy"
 description: "A simple Python agent that provides greetings."
 version: "0.1.0"
 endpoint: "http://localhost:11200"
+
+# Agent's cryptographic keys.
+# It's highly recommended to load the private key from an environment variable.
+keys:
+  publicKey: "base64_encoded_public_key"
+  privateKey: "{{ env.HIVE_AGENT_PRIVATE_KEY }}"
 
 capabilities:
   - id: "hello-world-python"
@@ -42,20 +50,26 @@ capabilities:
       response: "string"
 ```
 
+Place your `HIVE_AGENT_PRIVATE_KEY` in a `.env` file:
+
+```
+HIVE_AGENT_PRIVATE_KEY=your_base64_encoded_private_key
+```
+
 ### 2. Create Your Agent File
 
 Create a `main.py` file:
 
 ```python
 import asyncio
-from openhive import Agent, Config
+from openhive import Agent, AgentConfig
 
 async def main():
     # 1. Load agent configuration from .hive.yml
-    config = Config.from_yaml('.hive.yml')
+    agent_config = AgentConfig.from_yaml('.hive.yml')
 
     # 2. Create a new agent instance
-    agent = Agent(config)
+    agent = Agent(agent_config)
 
     # 3. Define and register a handler for the 'hello-world-python' capability
     #    You can use the decorator style for cleaner code.
@@ -118,13 +132,14 @@ The SDK makes it simple to communicate with other agents using the `send_task` m
 
 ```python
 import asyncio
-from openhive import Agent, Config, InMemoryRegistry
+from openhive import Agent, AgentConfig, InMemoryRegistry
 from openhive.types import AgentInfo
 
 async def communicate():
     # --- Agent 1 Setup ---
-    config1 = Config.from_yaml('agent1.yml')
-    agent1 = Agent(config1)
+    # In a real application, each agent would have its own .hive.yml
+    agent1_config = AgentConfig.load('agent1.yml')
+    agent1 = Agent(agent1_config)
 
     @agent1.capability("echo")
     async def echo(params: dict):
@@ -132,21 +147,20 @@ async def communicate():
 
 
     # --- Agent 2 Setup ---
-    config2 = Config.from_yaml('agent2.yml')
-    agent2 = Agent(config2)
+    agent2_config = AgentConfig.load('agent2.yml')
+    agent2 = Agent(agent2_config)
 
 
     # --- Communication ---
     # Agents can share a registry for discovery
     registry = InMemoryRegistry()
 
-    agent1_info = AgentInfo(**agent1.config.info(), publicKey=agent1.identity.get_public_key_b64())
-    await registry.add(agent1_info)
-    agent2_info = AgentInfo(**agent2.config.info(), publicKey=agent2.identity.get_public_key_b64())
-    await registry.add(agent2_info)
+    # The agent.register() method handles creating and adding AgentInfo
+    await agent1.register()
+    await agent2.register()
 
-    agent1.registry = registry
-    agent2.registry = registry # Inject registry
+    agent1.set_registry(registry)
+    agent2.set_registry(registry)
 
     # Agent 2 sends a task to Agent 1
     result = await agent2.send_task(

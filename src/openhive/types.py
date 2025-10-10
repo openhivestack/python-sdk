@@ -19,6 +19,7 @@ class AgentConfigStruct(BaseModel):
     public_key: Optional[str] = Field(None, alias="publicKey")
     log_level: str = Field("info", alias="logLevel")
     capabilities: List[AgentCapability]
+    keys: Dict[str, str]
 
 
 class AgentInfo(BaseModel):

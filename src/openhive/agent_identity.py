@@ -6,21 +6,23 @@ from .types import AgentMessageType
 
 
 class AgentIdentity:
-    def __init__(self, config: AgentConfig, private_key: bytes, public_key: bytes):
+    def __init__(self, config: AgentConfig):
         self.config = config
-        self.private_key = private_key
-        self.public_key = public_key
+        self.private_key = config.keys['privateKey'].encode('utf-8')
+        self.public_key = config.keys['publicKey'].encode('utf-8')
 
     @classmethod
     def create(cls, config: AgentConfig):
-        keys = AgentSignature.generate_key_pair()
-        return cls(config, keys["private_key"], keys["public_key"])
+        return cls(config)
 
     def id(self) -> str:
         return self.config.id
 
     def name(self) -> str:
         return self.config.name
+        
+    def get_public_key_b64(self) -> str:
+        return self.public_key.decode('utf-8')
 
     def _create_message(
         self,

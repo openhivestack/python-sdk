@@ -1,37 +1,29 @@
 from typing import Dict, Any, Callable, Awaitable, Optional
+import base64
+import httpx
 from .agent_config import AgentConfig
 from .agent_identity import AgentIdentity
 from .types import AgentMessageType, TaskRequestData, TaskResultData, TaskErrorData, AgentInfo
-from . import hive_error
+from . import agent_error
 from .agent_registry import AgentRegistry, InMemoryRegistry
-import httpx
-import base64
 
 CapabilityHandler = Callable[[Dict[str, Any]], Awaitable[Dict[str, Any]]]
 
 
 class Agent:
-    def __init__(
-        self,
-        config: AgentConfig,
-        private_key: bytes = None,
-        public_key: bytes = None,
-        registry: AgentRegistry = None,
-    ):
-        self.config = config
-        self.registry = registry or InMemoryRegistry()
+    def __init__(self, config: AgentConfig | str, registry: AgentRegistry = None):
+        self.config = AgentConfig(config)
+        self.identity = AgentIdentity.create(self.config)
+        self._capability_handlers = {}
+        self.registry = registry if registry else InMemoryRegistry()
 
-        if private_key and public_key:
-            self.identity = AgentIdentity(config, private_key, public_key)
-        else:
-            self.identity = AgentIdentity.create(config)
-
-        self._capability_handlers: Dict[str, CapabilityHandler] = {}
-
-    def capability(self, capability_id: str, handler: Optional[CapabilityHandler] = None):
+    def capability(self, capability_id: str, handler=None):
+        if not self.config.has_capability(capability_id):
+            raise ValueError(
+                f"Capability '{capability_id}' not defined in agent configuration."
+            )
+        
         def decorator(func: CapabilityHandler):
-            if not self.config.has_capability(capability_id):
-                raise ValueError(f"Capability '{capability_id}' is not defined.")
             self._capability_handlers[capability_id] = func
             return func
 
@@ -49,14 +41,14 @@ class Agent:
         if not self.identity.verify_message(message, sender_public_key):
             return self._create_error_response(
                 task_id,
-                hive_error.INVALID_SIGNATURE,
+                agent_error.INVALID_SIGNATURE,
                 "Signature verification failed.",
             )
 
         if message.get("type") != AgentMessageType.TASK_REQUEST.value:
             return self._create_error_response(
                 task_id,
-                hive_error.INVALID_MESSAGE_FORMAT,
+                agent_error.INVALID_MESSAGE_FORMAT,
                 "Invalid message type.",
             )
 
@@ -65,7 +57,7 @@ class Agent:
         except Exception as e:
             return self._create_error_response(
                 task_id,
-                hive_error.INVALID_PARAMETERS,
+                agent_error.INVALID_PARAMETERS,
                 f"Invalid task data: {e}",
             )
 
@@ -73,7 +65,7 @@ class Agent:
         if not handler:
             return self._create_error_response(
                 task_id,
-                hive_error.CAPABILITY_NOT_FOUND,
+                agent_error.CAPABILITY_NOT_FOUND,
                 f"Capability '{task_data.capability}' not found.",
             )
 
@@ -83,7 +75,7 @@ class Agent:
         except Exception as e:
             return self._create_error_response(
                 task_id,
-                hive_error.PROCESSING_FAILED,
+                agent_error.PROCESSING_FAILED,
                 str(e),
             )
 
@@ -98,9 +90,10 @@ class Agent:
         ).dict()
 
     async def register(self):
-        agent_info_dict = self.config.info()
-        agent_info_dict['publicKey'] = base64.b64encode(self.identity.public_key).decode('utf-8')
-        agent_info = AgentInfo(**agent_info_dict)
+        agent_info = AgentInfo(
+            **self.config.info(),
+            publicKey=self.identity.get_public_key_b64(),
+        )
         await self.registry.add(agent_info)
 
     async def get_public_key(self, agent_id: str) -> bytes | None:
@@ -116,32 +109,37 @@ class Agent:
         return self.config.endpoint
 
     async def send_task(
-        self, to_agent_id: str, capability: str, params: dict, task_id: str = None
+        self, to_agent_id: str, capability: str, params: dict
     ) -> dict:
         target_agent = await self.registry.get(to_agent_id)
         if not target_agent:
-            raise ValueError(f"Agent {to_agent_id} not found in registry.")
+            raise Exception(f"Agent {to_agent_id} not found in registry.")
 
         if not target_agent.endpoint:
-            raise ValueError(f"Endpoint for agent {to_agent_id} not configured.")
+            raise Exception(f"Endpoint for agent {to_agent_id} not configured.")
 
         task_request = self.identity.createTaskRequest(
-            to_agent_id, capability, params, task_id=task_id
+            to_agent_id,
+            capability,
+            params,
         )
 
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{target_agent.endpoint}/tasks",
                 json=task_request,
+                headers={"Content-Type": "application/json"},
             )
+
             response.raise_for_status()
-            response_message = response.json()
+            response_data = response.json()
 
-        target_public_key = base64.b64decode(target_agent.public_key)
-        if not self.identity.verify_message(response_message, target_public_key):
-            raise ValueError("Response signature verification failed.")
+            if not self.identity.verify_message(
+                response_data, target_agent.publicKey.encode('utf-8')
+            ):
+                raise Exception("Response signature verification failed.")
 
-        return response_message['data']
+            return response_data['data']
 
     def create_server(self):
         from .agent_server import AgentServer

@@ -1,27 +1,46 @@
-import json
-from yaml import safe_load
+import yaml
+import os
+import base64
+from typing import Dict, Any
+from dotenv import load_dotenv
+from jinja2 import Template
 from .types import AgentConfigStruct
-
-
-class AgentConfigError(Exception):
-    pass
-
+from .agent_error import AgentError
 
 class AgentConfig:
-    def __init__(self, config_data: dict):
-        self._config = AgentConfigStruct(**config_data)
+    def __init__(self, config_data: dict | str):
+        if isinstance(config_data, str):
+            config_data = self.load(config_data)
+        
+        try:
+            self._config = AgentConfigStruct(**config_data)
+        except Exception as e:
+            raise AgentError(f"Configuration validation failed: {e}")
 
-    @classmethod
-    def from_json(cls, file_path: str) -> 'AgentConfig':
-        with open(file_path, 'r') as f:
-            config_data = json.load(f)
-        return cls(config_data)
+    def load(self, file_path: str) -> Dict[str, Any]:
+        try:
+            load_dotenv()
 
-    @classmethod
-    def from_yaml(cls, file_path: str) -> 'AgentConfig':
-        with open(file_path, 'r') as f:
-            config_data = safe_load(f)
-        return cls(config_data)
+            with open(file_path, 'r') as f:
+                content = f.read()
+
+            template = Template(content)
+            rendered_content = template.render(env=os.environ)
+            
+            config_dict = yaml.safe_load(rendered_content)
+            
+            if 'keys' not in config_dict or 'publicKey' not in config_dict['keys'] or 'privateKey' not in config_dict['keys']:
+                raise ValueError("Missing required fields: keys.publicKey or keys.privateKey")
+
+            config_dict['keys']['publicKey'] = base64.b64decode(config_dict['keys']['publicKey']).decode('utf-8')
+            config_dict['keys']['privateKey'] = base64.b64decode(config_dict['keys']['privateKey']).decode('utf-8')
+            
+            return config_dict
+
+        except (IOError, yaml.YAMLError) as e:
+            raise AgentError(f"Failed to load or parse YAML configuration: {e}")
+        except (ValueError, base64.binascii.Error) as e:
+            raise AgentError(f"Key validation or decoding failed: {e}")
 
     @property
     def id(self) -> str:
@@ -46,15 +65,19 @@ class AgentConfig:
     @property
     def capabilities(self):
         return self._config.capabilities
+        
+    @property
+    def keys(self) -> Dict[str, str]:
+        return self._config.keys
 
     def has_capability(self, capability_id: str) -> bool:
         return any(cap.id == capability_id for cap in self._config.capabilities)
 
     def to_dict(self):
-        return self._config.dict(by_alias=True)
+        return self._config.model_dump(by_alias=True)
 
     def info(self):
-        return self._config.dict(
+        return self._config.model_dump(
             by_alias=True,
-            exclude={'log_level', 'public_key'}
+            exclude={'log_level', 'keys'}
         )

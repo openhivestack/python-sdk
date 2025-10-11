@@ -93,9 +93,11 @@ class Agent:
         ).dict()
 
     async def register(self, registry_endpoint: str = None):
+        info = self.config.info()
+        info.pop("keys", None)
         agent_info = AgentInfo(
-            **self.config.info(),
-            publicKey=self.identity.get_public_key_b64(),
+            **info,
+            keys={"publicKey": self.identity.get_public_key_b64()},
         )
         await self.registry.add(agent_info)
 
@@ -128,7 +130,7 @@ class Agent:
     async def public_key(self, agent_id: str) -> str | None:
         agent_info = await self.registry.get(agent_id)
         if agent_info:
-            return agent_info.public_key
+            return agent_info.keys.public_key
         return None
 
     def endpoint(self) -> str:
@@ -162,7 +164,7 @@ class Agent:
             response_data = response.json()
 
             if not self.identity.verify_message(
-                response_data, base64.b64decode(target_agent.publicKey)
+                response_data, base64.b64decode(target_agent.keys.public_key)
             ):
                 raise Exception("Response signature verification failed.")
 

@@ -39,7 +39,7 @@ class AgentServer:
             except Exception as e:
                 raise HTTPException(status_code=500, detail=str(e))
 
-        @self.app.get("/registry")
+        @self.app.get("/registry/list")
         async def list_agents_in_registry():
             try:
                 agents = await self.agent.registry.list()
@@ -63,6 +63,16 @@ class AgentServer:
                     return agent
                 else:
                     raise HTTPException(status_code=404, detail="Agent not found")
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e))
+
+        @self.app.put("/registry/{agent_id}", status_code=200)
+        async def update_agent_in_registry(agent_id: str, agent_info: AgentInfo):
+            if agent_id != agent_info.id:
+                raise HTTPException(status_code=400, detail="Agent ID mismatch")
+            try:
+                await self.agent.registry.update(agent_info)
+                return agent_info
             except Exception as e:
                 raise HTTPException(status_code=500, detail=str(e))
 

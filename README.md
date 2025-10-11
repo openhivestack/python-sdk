@@ -254,3 +254,25 @@ if __name__ == "__main__":
 ```
 
 Run this in a third terminal: `python requester_agent.py`. You should see the successful task exchange!
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) to get started.
+
+## ⚖️ Licensing
+
+This project is made available under a Dual License model.
+
+### 1. Open Source License (AGPLv3)
+
+The code in this repository is primarily licensed under the **GNU Affero General Public License v3.0 (AGPLv3)**.
+
+The AGPLv3 is a strong copyleft license. This means you are free to use, modify, and distribute this software, but if you run a modified version of the software as a public network service (Software as a Service, or SaaS), you must offer the source code of your modified version to your users.
+
+**See the [LICENSE.md](LICENSE.md) file for full details.**
+
+### 2. Commercial License (Proprietary)
+
+If you are an organization that needs to use this software in a proprietary, closed-source product, or if you cannot comply with the AGPLv3's copyleft requirements, you must purchase a **Commercial License**.
+
+For licensing inquiries, please contact us at: **[commercial@openhive.sh]**

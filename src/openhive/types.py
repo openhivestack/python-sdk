@@ -22,6 +22,10 @@ class AgentConfigStruct(BaseModel):
     keys: Dict[str, str]
 
 
+class AgentKeys(BaseModel):
+    public_key: str = Field(..., alias="publicKey")
+
+
 class AgentInfo(BaseModel):
     id: str
     name: str
@@ -29,7 +33,7 @@ class AgentInfo(BaseModel):
     version: str
     endpoint: str
     capabilities: List[AgentCapability]
-    public_key: str = Field(..., alias="publicKey")
+    keys: AgentKeys
 
 
 class AgentMessageType(str, Enum):

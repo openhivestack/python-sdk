@@ -24,6 +24,10 @@ class AgentRegistry(ABC):
     @abstractmethod
     async def search(self, query: str) -> List[AgentInfo]:
         pass
+    
+    @abstractmethod
+    async def update(self, agent_info: AgentInfo):
+        pass
 
 
 class InMemoryRegistry(AgentRegistry):
@@ -42,6 +46,10 @@ class InMemoryRegistry(AgentRegistry):
 
     async def list(self) -> List[AgentInfo]:
         return list(self._agents.values())
+
+    async def update(self, agent_info: AgentInfo):
+        if agent_info.id in self._agents:
+            self._agents[agent_info.id] = agent_info
 
     async def search(self, query: str) -> List[AgentInfo]:
         parsed_query = QueryParser.parse(query)

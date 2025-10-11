@@ -7,6 +7,7 @@ from jinja2 import Template
 from .types import AgentConfigStruct
 from .agent_error import AgentError
 
+
 class AgentConfig:
     def __init__(self, config_data: dict | str):
         if isinstance(config_data, str):
@@ -32,8 +33,13 @@ class AgentConfig:
             if 'keys' not in config_dict or 'publicKey' not in config_dict['keys'] or 'privateKey' not in config_dict['keys']:
                 raise ValueError("Missing required fields: keys.publicKey or keys.privateKey")
 
-            config_dict['keys']['publicKey'] = base64.b64decode(config_dict['keys']['publicKey']).decode('utf-8')
-            config_dict['keys']['privateKey'] = base64.b64decode(config_dict['keys']['privateKey']).decode('utf-8')
+            config_dict['keys']['publicKey'] = base64.b64decode(
+                config_dict['keys']['publicKey'].encode('utf-8')
+            ).decode('utf-8')
+            
+            config_dict['keys']['privateKey'] = base64.b64decode(
+                config_dict['keys']['privateKey'].encode('utf-8')
+            ).decode('utf-8')
             
             return config_dict
 

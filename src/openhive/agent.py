@@ -1,22 +1,55 @@
-from typing import Dict, Any, Callable, Awaitable, List
+from typing import Dict, Any, Callable, Awaitable, List, Optional, Union
 import base64
 import httpx
+import os
+from pydantic import ValidationError
 from .agent_config import AgentConfig
 from .agent_identity import AgentIdentity
 from .types import AgentMessageType, TaskRequestData, TaskResultData, TaskErrorData, AgentInfo
-from .agent_error import AgentError, INVALID_SIGNATURE, INVALID_MESSAGE_FORMAT, INVALID_PARAMETERS
-from .agent_error import CAPABILITY_NOT_FOUND, PROCESSING_FAILED
+from .agent_error import (
+    AgentError, INVALID_SIGNATURE, INVALID_MESSAGE_FORMAT, INVALID_PARAMETERS,
+    CAPABILITY_NOT_FOUND, PROCESSING_FAILED, AGENT_NOT_FOUND, CONFIG_ERROR
+)
 from .agent_registry import AgentRegistry, InMemoryRegistry
 
 CapabilityHandler = Callable[[Dict[str, Any]], Awaitable[Dict[str, Any]]]
 
 
 class Agent:
-    def __init__(self, config: AgentConfig | str, registry: AgentRegistry = None):
+    def __init__(self, config: Optional[Union[AgentConfig, str]] = None, registry: AgentRegistry = None):
+        if config is None:
+            config = os.path.join(os.getcwd(), '.hive.yml')
         self.config = AgentConfig(config)
         self.identity = AgentIdentity.create(self.config)
-        self._capability_handlers = {}
-        self.registry: AgentRegistry = registry if registry else InMemoryRegistry()
+        self._capability_handlers: Dict[str, CapabilityHandler] = {}
+        self.registries: Dict[str, AgentRegistry] = {}
+        self.registries['internal'] = InMemoryRegistry('internal', self.config.endpoint)
+        if registry:
+            self.registries[registry.name] = registry
+            self.active_registry = registry
+        else:
+            self.active_registry = self.registries['internal']
+
+    def use_registry(self, name: str) -> "Agent":
+        if name not in self.registries:
+            raise ValueError(f"Registry with name '{name}' not found.")
+        self.active_registry = self.registries[name]
+        return self
+
+    def add_registry(self, registry: AgentRegistry) -> "Agent":
+        self.registries[registry.name] = registry
+        return self
+
+    def remove_registry(self, name: str) -> "Agent":
+        if name in self.registries:
+            del self.registries[name]
+        return self
+
+    def get_registry(self, name: str) -> AgentRegistry:
+        return self.registries[name]
+
+    def list_registries(self) -> List[AgentRegistry]:
+        return list(self.registries.values())
 
     def capability(self, capability_id: str, handler=None):
         if not self.config.has_capability(capability_id):
@@ -57,7 +90,7 @@ class Agent:
 
         try:
             task_data = TaskRequestData(**message.get("data", {}))
-        except Exception as e:
+        except ValidationError as e:
             return self._create_error_response(
                 task_id,
                 INVALID_PARAMETERS,
@@ -99,7 +132,7 @@ class Agent:
             **info,
             keys={"publicKey": self.identity.get_public_key_b64()},
         )
-        await self.registry.add(agent_info)
+        await self.active_registry.add(agent_info)
 
         if registry_endpoint:
             try:
@@ -111,7 +144,7 @@ class Agent:
             except Exception as e:
                 raise AgentError(
                     f"Failed to register with remote registry at {registry_endpoint}: {e}"
-                )
+                ) from e
 
     async def search(self, query: str, registry_endpoint: str) -> List[AgentInfo]:
         try:
@@ -125,10 +158,10 @@ class Agent:
         except Exception as e:
             raise AgentError(
                 f"Failed to search for agents with query '{query}' from registry at {registry_endpoint}: {e}"
-            )
+            ) from e
 
     async def public_key(self, agent_id: str) -> str | None:
-        agent_info = await self.registry.get(agent_id)
+        agent_info = await self.active_registry.get(agent_id)
         if agent_info:
             return agent_info.keys.public_key
         return None
@@ -139,12 +172,12 @@ class Agent:
     async def send_task(
         self, to_agent_id: str, capability: str, params: dict, task_id: str = None
     ) -> dict:
-        target_agent = await self.registry.get(to_agent_id)
+        target_agent = await self.active_registry.get(to_agent_id)
         if not target_agent:
-            raise Exception(f"Agent {to_agent_id} not found in registry.")
+            raise AgentError(AGENT_NOT_FOUND, f"Agent {to_agent_id} not found in registry.")
 
         if not target_agent.endpoint:
-            raise Exception(f"Endpoint for agent {to_agent_id} not configured.")
+            raise AgentError(CONFIG_ERROR, f"Endpoint for agent {to_agent_id} not configured.")
 
         task_request = self.identity.createTaskRequest(
             to_agent_id,
@@ -166,7 +199,7 @@ class Agent:
             if not self.identity.verify_message(
                 response_data, base64.b64decode(target_agent.keys.public_key)
             ):
-                raise Exception("Response signature verification failed.")
+                raise AgentError(INVALID_SIGNATURE, "Response signature verification failed.")
 
             return response_data['data']
 

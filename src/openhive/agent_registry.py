@@ -5,6 +5,16 @@ from .query_parser import QueryParser
 
 
 class AgentRegistry(ABC):
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        pass
+
+    @property
+    @abstractmethod
+    def endpoint(self) -> str:
+        pass
+
     @abstractmethod
     async def add(self, agent_info: AgentInfo):
         pass
@@ -31,9 +41,19 @@ class AgentRegistry(ABC):
 
 
 class InMemoryRegistry(AgentRegistry):
-    def __init__(self):
+    def __init__(self, name: str, endpoint: str):
+        self._name = name
+        self._endpoint = endpoint
         self._agents: dict[str, AgentInfo] = {}
 
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def endpoint(self) -> str:
+        return self._endpoint
+    
     async def add(self, agent_info: AgentInfo):
         self._agents[agent_info.id] = agent_info
 

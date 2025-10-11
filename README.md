@@ -61,40 +61,28 @@ HIVE_AGENT_PRIVATE_KEY=your_base64_encoded_private_key
 Create a `main.py` file:
 
 ```python
-import asyncio
-from openhive import Agent, AgentConfig
+import uvicorn
+from openhive import Agent
 
-async def main():
-    # 1. Load agent configuration from .hive.yml
-    agent_config = AgentConfig.from_yaml('.hive.yml')
+# 1. Create a new agent instance.
+# By default, it loads .hive.yml from the current directory.
+agent = Agent()
 
-    # 2. Create a new agent instance
-    agent = Agent(agent_config)
+# 2. Register a handler for the 'hello-world-python' capability
+@agent.capability("hello-world-python")
+async def hello_world(params: dict):
+    name = params.get("name")
+    if not name:
+        raise ValueError("The 'name' parameter is required.")
+    return {"response": f"Hello, {name}!"}
 
-    # 3. Define and register a handler for the 'hello-world-python' capability
-    #    You can use the decorator style for cleaner code.
-    @agent.capability("hello-world-python")
-    async def hello_world(params: dict):
-        name = params.get("name")
-        if not name:
-            raise ValueError("The 'name' parameter is required.")
-        return {"response": f"Hello, {name}!"}
-
-    # 4. Register the agent in the network (optional, for discovery)
-    await agent.register()
-
-    print(f"Agent {agent.identity.id()} registered with capabilities.")
-
-    # 5. Create and start the HTTP server
-    server = agent.create_server()
-    # server.start() is blocking, so you might run it in a separate process
-    # or use an ASGI server like uvicorn directly for more control.
-    print(f"Server starting at {agent.get_endpoint()}")
-    # For this example, we won't block with server.start()
-    # In a real application, you would run the server.
+# 3. Create the server instance
+server = agent.create_server()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    print(f"Agent is running at {agent.endpoint()}")
+    # In a real application, you would get the port from the agent's config
+    uvicorn.run(server.app, host="0.0.0.0", port=11200)
 ```
 
 ### 3. Run Your Agent
@@ -108,7 +96,7 @@ The `AgentServer` now includes a full set of RESTful endpoints that expose the a
 ### Registry API Endpoints
 
 - `POST /registry/add`: Registers an agent. The request body should be an `AgentInfo` object.
-- `GET /registry`: Returns a list of all registered agents.
+- `GET /registry/list`: Returns a list of all registered agents.
 - `GET /registry/{agent_id}`: Retrieves the details of a single agent by its ID.
 - `DELETE /registry/{agent_id}`: Removes an agent from the registry.
 
@@ -237,7 +225,7 @@ async def main():
     print(f"Found responder agent: {responder_info.id}")
 
     # 2. Add the discovered agent to its local registry
-    await requester_agent.registry.add(responder_info)
+    await requester_agent.active_registry.add(responder_info)
 
     # 3. Now, send the task
     print("Requester sending 'greet' task to responder...")
@@ -254,6 +242,46 @@ if __name__ == "__main__":
 ```
 
 Run this in a third terminal: `python requester_agent.py`. You should see the successful task exchange!
+
+## Advanced Agent Search
+
+The `InMemoryRegistry` now includes a powerful search feature that allows you to find agents using a query syntax inspired by Stripe. You can filter agents by their `name`, `id`, `description`, and `capabilities`.
+
+#### Search by General Term
+
+Provide a single term to search across an agent's `name`, `id`, and `description`.
+
+```python
+# Finds agents where 'My Agent' is in the name, id, or description
+results = await registry.search('My Agent')
+```
+
+#### Search by Specific Fields
+
+Target specific fields using `field:value` syntax.
+
+```python
+# Finds agents with the name "HelloWorldAgent"
+results = await registry.search('name:HelloWorldAgent')
+```
+
+#### Search by Capability
+
+You can find agents that possess a specific capability.
+
+```python
+# Finds agents with the 'hello-world' capability
+results = await registry.search('capability:hello-world')
+```
+
+#### Combining Filters
+
+Combine multiple filters to create more specific queries.
+
+```python
+# Finds agents named "My Agent" that also have the 'file-reader' capability
+results = await registry.search('name:"My Agent" capability:file-reader')
+```
 
 ## 🤝 Contributing
 

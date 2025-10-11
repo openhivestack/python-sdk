@@ -8,6 +8,14 @@ from .types import AgentConfigStruct
 from .agent_error import AgentError
 
 
+def _pad_base64(data):
+    """Pad base64 data if necessary."""
+    missing_padding = len(data) % 4
+    if missing_padding:
+        data += '=' * (4 - missing_padding)
+    return data
+
+
 class AgentConfig:
     def __init__(self, config_data: dict | str):
         if isinstance(config_data, str):
@@ -33,12 +41,14 @@ class AgentConfig:
             if 'keys' not in config_dict or 'publicKey' not in config_dict['keys'] or 'privateKey' not in config_dict['keys']:
                 raise ValueError("Missing required fields: keys.publicKey or keys.privateKey")
 
+            padded_public_key = _pad_base64(config_dict['keys']['publicKey'])
             config_dict['keys']['publicKey'] = base64.b64decode(
-                config_dict['keys']['publicKey'].encode('utf-8')
+                padded_public_key.encode('utf-8')
             ).decode('utf-8')
             
+            padded_private_key = _pad_base64(config_dict['keys']['privateKey'])
             config_dict['keys']['privateKey'] = base64.b64decode(
-                config_dict['keys']['privateKey'].encode('utf-8')
+                padded_private_key.encode('utf-8')
             ).decode('utf-8')
             
             return config_dict

@@ -13,7 +13,6 @@ class AgentConfig:
     def __init__(self, config_data: dict | str):
         if isinstance(config_data, str):
             config_data = self.load(config_data)
-        
         try:
             self._config = AgentConfigStruct(**config_data)
         except Exception as e:
@@ -28,10 +27,13 @@ class AgentConfig:
 
             template = Template(content)
             rendered_content = template.render(env=os.environ)
-            
             config_dict = yaml.safe_load(rendered_content)
-            
-            if 'keys' not in config_dict or 'publicKey' not in config_dict['keys'] or 'privateKey' not in config_dict['keys']:
+
+            if (
+                'keys' not in config_dict
+                or 'publicKey' not in config_dict['keys']
+                or 'privateKey' not in config_dict['keys']
+            ):
                 raise ValueError(
                     "Missing required fields: keys.publicKey or keys.privateKey"
                 )
@@ -43,9 +45,13 @@ class AgentConfig:
                 config_dict['keys']['privateKey']
             ).decode('utf-8')
 
-            config_dict['host'] = config_dict['host'] or urlparse(config_dict['endpoint']).netloc
-            config_dict['port'] = config_dict['port'] or int(urlparse(config_dict['endpoint']).port)
-            
+            endpoint = config_dict.get('endpoint')
+            if not endpoint:
+                raise ValueError("Missing required field: endpoint")
+
+            parsed_endpoint = urlparse(endpoint)
+            config_dict['host'] = config_dict.get('host') or parsed_endpoint.netloc
+            config_dict['port'] = config_dict.get('port') or parsed_endpoint.port
             return config_dict
 
         except (IOError, yaml.YAMLError) as e:
@@ -85,7 +91,7 @@ class AgentConfig:
     @property
     def capabilities(self):
         return self._config.capabilities
-        
+
     @property
     def keys(self) -> Dict[str, str]:
         return self._config.keys

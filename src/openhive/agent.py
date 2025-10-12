@@ -12,6 +12,7 @@ from .agent_error import (
     CAPABILITY_NOT_FOUND, PROCESSING_FAILED, AGENT_NOT_FOUND, CONFIG_ERROR
 )
 from .agent_registry import AgentRegistry, InMemoryRegistry
+from .remote_registry import RemoteRegistry
 
 CapabilityHandler = Callable[[Dict[str, Any]], Awaitable[Dict[str, Any]]]
 
@@ -39,8 +40,16 @@ class Agent:
         self.registry = self.active_registry
         return self
 
-    def add_registry(self, registry: AgentRegistry) -> "Agent":
-        self.registries[registry.name] = registry
+    def add_registry(
+        self, registry_or_endpoint: Union[AgentRegistry, str], name: Optional[str] = None
+    ) -> "Agent":
+        if isinstance(registry_or_endpoint, str):
+            endpoint = registry_or_endpoint
+            registry_name = name or endpoint
+            new_registry = RemoteRegistry(registry_name, endpoint)
+            self.registries[new_registry.name] = new_registry
+        else:
+            self.registries[registry_or_endpoint.name] = registry_or_endpoint
         return self
 
     def remove_registry(self, name: str) -> "Agent":
@@ -128,39 +137,49 @@ class Agent:
             retry=False
         ).dict()
 
-    async def register(self, registry_endpoint: str = None):
+    async def register(self, registry: Optional[Union[str, AgentRegistry]] = None):
+        if registry is None:
+            registry_obj = self.active_registry
+        elif isinstance(registry, str):
+            registry_obj = self.get_registry(registry)
+        else:
+            registry_obj = registry
+
+        if not registry_obj:
+            raise AgentError(CONFIG_ERROR, f"Registry not found.")
+
         info = self.config.info()
         info.pop("keys", None)
         agent_info = AgentInfo(
             **info,
             keys={"publicKey": self.identity.get_public_key_b64()},
         )
-        await self.active_registry.add(agent_info)
 
-        if registry_endpoint:
-            try:
-                async with httpx.AsyncClient() as client:
-                    await client.post(
-                        f"{registry_endpoint}/registry/add",
-                        json=agent_info.dict(by_alias=True),
-                    )
-            except Exception as e:
-                raise AgentError(
-                    f"Failed to register with remote registry at {registry_endpoint}: {e}"
-                ) from e
-
-    async def search(self, query: str, registry_endpoint: str) -> List[AgentInfo]:
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    f"{registry_endpoint}/registry/search", params={"q": query}
-                )
-                response.raise_for_status()
-                results_dict = response.json()
-                return [AgentInfo(**info) for info in results_dict]
+            await registry_obj.add(agent_info)
         except Exception as e:
             raise AgentError(
-                f"Failed to search for agents with query '{query}' from registry at {registry_endpoint}: {e}"
+                PROCESSING_FAILED,
+                f"Failed to register with registry at {registry_obj.endpoint}: {e}"
+            ) from e
+
+    async def search(self, query: str, registry: Optional[Union[str, AgentRegistry]] = None) -> List[AgentInfo]:
+        if registry is None:
+            registry_obj = self.active_registry
+        elif isinstance(registry, str):
+            registry_obj = self.get_registry(registry)
+        else:
+            registry_obj = registry
+
+        if not registry_obj:
+            raise AgentError(CONFIG_ERROR, "Registry not found.")
+
+        try:
+            return await registry_obj.search(query)
+        except Exception as e:
+            raise AgentError(
+                PROCESSING_FAILED,
+                f"Failed to search for agents with query '{query}' from registry at {registry_obj.endpoint}: {e}"
             ) from e
 
     async def public_key(self, agent_id: str) -> str | None:

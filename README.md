@@ -161,7 +161,6 @@ This agent provides a `greet` capability and registers itself with the Registry 
 
 ```python
 import asyncio
-import httpx
 import uvicorn
 from openhive import Agent
 
@@ -169,6 +168,7 @@ from openhive import Agent
 # with a capability called 'greet'.
 
 REGISTRY_ENDPOINT = "http://localhost:11200"
+REMOTE_REGISTRY_NAME = "remote"
 
 responder_agent = Agent()
 
@@ -177,7 +177,10 @@ async def greet(params: dict):
     return {"message": f"Hello, {params.get('name')}!"}
 
 async def startup():
-    await responder_agent.register(REGISTRY_ENDPOINT)
+    # To register with a remote registry, add it by providing its endpoint.
+    responder_agent.add_registry(REGISTRY_ENDPOINT, REMOTE_REGISTRY_NAME)
+    # Then, register with it by name
+    await responder_agent.register(REMOTE_REGISTRY_NAME)
     print("Responder agent registered successfully.")
 
 if __name__ == "__main__":
@@ -204,17 +207,20 @@ from openhive import Agent
 # Create a .hive.yml for this agent listening on port 11202
 
 REGISTRY_ENDPOINT = "http://localhost:11200"
+REMOTE_REGISTRY_NAME = "remote"
 
 async def main():
     requester_agent = Agent()
 
-    # Register itself with the registry agent
-    await requester_agent.register(REGISTRY_ENDPOINT)
+    # Add the remote registry and register this agent with it
+    requester_agent.add_registry(REGISTRY_ENDPOINT, REMOTE_REGISTRY_NAME)
+    await requester_agent.register(REMOTE_REGISTRY_NAME)
+    print("Requester agent registered successfully.")
 
-    # 1. Search for agents with the 'greet' capability
+    # 1. Search for agents with the 'greet' capability using the remote registry
     print("Searching for agents with 'greet' capability...")
     search_results = await requester_agent.search(
-        "capability:greet", REGISTRY_ENDPOINT
+        "capability:greet", REMOTE_REGISTRY_NAME
     )
 
     if not search_results:
@@ -224,8 +230,8 @@ async def main():
     responder_info = search_results[0]
     print(f"Found responder agent: {responder_info.id}")
 
-    # 2. Add the discovered agent to its local registry
-    await requester_agent.active_registry.add(responder_info)
+    # 2. Add the discovered agent to the local registry to enable communication
+    await requester_agent.registry.add(responder_info)
 
     # 3. Now, send the task
     print("Requester sending 'greet' task to responder...")

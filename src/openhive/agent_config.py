@@ -1,5 +1,6 @@
 import yaml
 import os
+from urllib.parse import urlparse
 import base64
 from typing import Dict, Any
 from dotenv import load_dotenv
@@ -41,6 +42,9 @@ class AgentConfig:
             config_dict['keys']['privateKey'] = base64.b64decode(
                 config_dict['keys']['privateKey']
             ).decode('utf-8')
+
+            config_dict['host'] = config_dict['host'] or urlparse(config_dict['endpoint']).netloc
+            config_dict['port'] = config_dict['port'] or int(urlparse(config_dict['endpoint']).port)
             
             return config_dict
 

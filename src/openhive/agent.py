@@ -172,11 +172,11 @@ class Agent:
     def endpoint(self) -> str:
         return self.config.endpoint
 
-    def port(self) -> Optional[int]:
-        return urlparse(self.endpoint()).port
+    def port(self) -> int:
+        return self.config.port
 
     def host(self) -> str:
-        return urlparse(self.endpoint()).netloc
+        return self.config.host
 
     async def send_task(
         self, to_agent_id: str, capability: str, params: dict, task_id: str = None

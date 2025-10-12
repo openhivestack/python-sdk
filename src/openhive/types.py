@@ -16,8 +16,8 @@ class AgentConfigStruct(BaseModel):
     description: str
     version: str
     endpoint: str
-    host: str
-    port: int
+    host: Optional[str]
+    port: Optional[int]
     public_key: Optional[str] = Field(None, alias="publicKey")
     log_level: str = Field("info", alias="logLevel")
     capabilities: List[AgentCapability]

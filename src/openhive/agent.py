@@ -30,11 +30,13 @@ class Agent:
             self.active_registry = registry
         else:
             self.active_registry = self.registries['internal']
+        self.registry = self.active_registry
 
     def use_registry(self, name: str) -> "Agent":
         if name not in self.registries:
             raise ValueError(f"Registry with name '{name}' not found.")
         self.active_registry = self.registries[name]
+        self.registry = self.active_registry
         return self
 
     def add_registry(self, registry: AgentRegistry) -> "Agent":

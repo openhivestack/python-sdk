@@ -16,13 +16,13 @@ class AgentConfig:
         try:
             self._config = AgentConfigStruct(**config_data)
         except Exception as e:
-            raise AgentError(f"Configuration validation failed: {e}")
+            raise AgentError(f"Configuration validation failed: {e}") from e
 
     def load(self, file_path: str) -> Dict[str, Any]:
         try:
             load_dotenv()
 
-            with open(file_path, 'r') as f:
+            with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
 
             template = Template(content)
@@ -31,17 +31,25 @@ class AgentConfig:
             config_dict = yaml.safe_load(rendered_content)
             
             if 'keys' not in config_dict or 'publicKey' not in config_dict['keys'] or 'privateKey' not in config_dict['keys']:
-                raise ValueError("Missing required fields: keys.publicKey or keys.privateKey")
+                raise ValueError(
+                    "Missing required fields: keys.publicKey or keys.privateKey"
+                )
 
-            config_dict['keys']['publicKey'] = base64.b64decode(config_dict['keys']['publicKey']).decode('utf-8')
-            config_dict['keys']['privateKey'] = base64.b64decode(config_dict['keys']['privateKey']).decode('utf-8')
+            config_dict['keys']['publicKey'] = base64.b64decode(
+                config_dict['keys']['publicKey']
+            ).decode('utf-8')
+            config_dict['keys']['privateKey'] = base64.b64decode(
+                config_dict['keys']['privateKey']
+            ).decode('utf-8')
             
             return config_dict
 
         except (IOError, yaml.YAMLError) as e:
-            raise AgentError(f"Failed to load or parse YAML configuration: {e}")
+            raise AgentError(
+                f"Failed to load or parse YAML configuration: {e}"
+            ) from e
         except (ValueError, base64.binascii.Error) as e:
-            raise AgentError(f"Key validation or decoding failed: {e}")
+            raise AgentError(f"Key validation or decoding failed: {e}") from e
 
     @property
     def id(self) -> str:
@@ -60,6 +68,13 @@ class AgentConfig:
         return self._config.version
 
     @property
+    def host(self) -> str:
+        return self._config.host
+
+    @property
+    def port(self) -> int:
+        return self._config.port
+
     def endpoint(self) -> str:
         return self._config.endpoint
 

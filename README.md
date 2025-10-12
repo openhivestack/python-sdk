@@ -82,7 +82,7 @@ server = agent.create_server()
 if __name__ == "__main__":
     print(f"Agent is running at {agent.endpoint()}")
     # In a real application, you would get the port from the agent's config
-    uvicorn.run(server.app, host="0.0.0.0", port=11200)
+    uvicorn.run(server.app, host="0.0.0.0", port=agent.port())
 ```
 
 ### 3. Run Your Agent
@@ -148,7 +148,7 @@ if __name__ == "__main__":
     registry_agent = Agent()
     server = registry_agent.create_server()
     print(f"Registry agent is running at {registry_agent.endpoint()}")
-    uvicorn.run(server.app, host="0.0.0.0", port=11200)
+    uvicorn.run(server.app, host="0.0.0.0", port=registry_agent.port())
 ```
 
 Run this agent in your first terminal: `python registry_agent.py`
@@ -186,7 +186,7 @@ if __name__ == "__main__":
 
     server = responder_agent.create_server()
     print(f"Responder agent is running at {responder_agent.endpoint()}")
-    uvicorn.run(server.app, host="0.0.0.0", port=11201)
+    uvicorn.run(server.app, host="0.0.0.0", port=responder_agent.port())
 ```
 
 Run this agent in your second terminal: `python responder_agent.py`

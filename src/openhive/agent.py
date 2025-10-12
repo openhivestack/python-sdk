@@ -2,6 +2,7 @@ from typing import Dict, Any, Callable, Awaitable, List, Optional, Union
 import base64
 import httpx
 import os
+from urllib.parse import urlparse
 from pydantic import ValidationError
 from .agent_config import AgentConfig
 from .agent_identity import AgentIdentity
@@ -56,7 +57,7 @@ class Agent:
             raise ValueError(
                 f"Capability '{capability_id}' not defined in agent configuration."
             )
-        
+
         def decorator(func: CapabilityHandler):
             self._capability_handlers[capability_id] = func
             return func
@@ -168,6 +169,12 @@ class Agent:
 
     def endpoint(self) -> str:
         return self.config.endpoint
+
+    def port(self) -> Optional[int]:
+        return urlparse(self.endpoint()).port
+
+    def host(self) -> str:
+        return urlparse(self.endpoint()).netloc
 
     async def send_task(
         self, to_agent_id: str, capability: str, params: dict, task_id: str = None

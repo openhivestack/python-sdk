@@ -1,6 +1,5 @@
 import base64
-from nacl.signing import SigningKey, VerifyKey
-from nacl.encoding import RawEncoder
+import json
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
 
@@ -29,8 +28,8 @@ class AgentSignature:
         }
 
     @staticmethod
-    def sign(message: bytes, private_key: str) -> str:
-        """Signs a message using an Ed25519 private key in PEM format."""
+    def sign(message: dict, private_key: str) -> str:
+        """Signs a message dictionary using an Ed25519 private key in PEM format."""
         try:
             private_key_bytes = private_key
             if isinstance(private_key, str):
@@ -40,15 +39,16 @@ class AgentSignature:
                 private_key_bytes,
                 password=None
             )
-            raw_private_key = pem_key.private_bytes_raw()
-            signing_key = SigningKey(raw_private_key)
-            signed_message = signing_key.sign(message)
-            return base64.b64encode(signed_message.signature).decode('utf-8')
+
+            message_string = json.dumps(message, separators=(',', ':'), sort_keys=True)
+            signature = pem_key.sign(message_string.encode('utf-8'))
+            
+            return base64.b64encode(signature).decode('utf-8')
         except Exception as e:
             raise ValueError(f"Failed to sign message: {e}")
 
     @staticmethod
-    def verify(message: bytes, signature: str, public_key: str) -> bool:
+    def verify(message: dict, signature: str, public_key: str) -> bool:
         """Verifies a message signature using an Ed25519 public key in PEM format."""
         try:
             public_key_bytes = public_key
@@ -58,10 +58,11 @@ class AgentSignature:
             pem_key = serialization.load_pem_public_key(
                 public_key_bytes
             )
-            raw_public_key = pem_key.public_bytes_raw()
-            verify_key = VerifyKey(raw_public_key)
+            
+            message_string = json.dumps(message, separators=(',', ':'), sort_keys=True)
             signature_bytes = base64.b64decode(signature)
-            verify_key.verify(message, signature_bytes)
+
+            pem_key.verify(signature_bytes, message_string.encode('utf-8'))
             return True
         except Exception:
             return False

@@ -37,16 +37,7 @@ class AgentIdentity:
             "data": data,
         }
         
-        # Pydantic models need to be converted to dicts for JSON serialization
-        # but here `data` is already a dict.
-        # We need a stable JSON representation for signing.
-        message_json = json.dumps(
-            message_without_sig,
-            sort_keys=True, 
-            separators=(',', ':')
-        ).encode('utf-8')
-        
-        signature = AgentSignature.sign(message_json, self.private_key)
+        signature = AgentSignature.sign(message_without_sig, self.private_key)
         
         return {**message_without_sig, "sig": signature}
 
@@ -111,15 +102,8 @@ class AgentIdentity:
         message_copy = message.copy()
         signature = message_copy.pop("sig")
 
-        message_json = (
-            json.dumps(
-                message_copy,
-                sort_keys=True,
-                separators=(',', ':'),
-            ).encode('utf-8')
-        )
         return AgentSignature.verify(
-            message_json,
+            message_copy,
             signature,
             public_key,
         )

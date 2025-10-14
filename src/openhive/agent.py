@@ -152,7 +152,7 @@ class Agent:
         info.pop("keys", None)
         agent_info = AgentInfo(
             **info,
-            keys={"publicKey": self.identity.get_public_key_pem_b64()},
+            keys={"publicKey": self.identity.get_public_key()},
         )
 
         try:

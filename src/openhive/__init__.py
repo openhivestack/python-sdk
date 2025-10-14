@@ -1,7 +1,7 @@
 """
 H.I.V.E. Protocol Core SDK for Python
 """
-__version__ = "0.8.5"
+__version__ = "0.8.6"
 
 from .agent import Agent
 from .agent_config import AgentConfig

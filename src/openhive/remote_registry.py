@@ -70,7 +70,7 @@ class RemoteRegistry(AgentRegistry):
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.put(
-                    f"{self.endpoint}/registry/update",
+                    f"{self.endpoint}/registry/{agent_info.id}",
                     json=agent_info.dict(by_alias=True)
                 )
                 response.raise_for_status()

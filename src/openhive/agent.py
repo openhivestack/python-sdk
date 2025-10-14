@@ -2,7 +2,6 @@ from typing import Dict, Any, Callable, Awaitable, List, Optional, Union
 import base64
 import httpx
 import os
-from urllib.parse import urlparse
 from pydantic import ValidationError
 from .agent_config import AgentConfig
 from .agent_identity import AgentIdentity
@@ -146,7 +145,7 @@ class Agent:
             registry_obj = registry
 
         if not registry_obj:
-            raise AgentError(CONFIG_ERROR, f"Registry not found.")
+            raise AgentError(CONFIG_ERROR, "Registry not found.")
 
         info = self.config.info()
         info.pop("keys", None)
@@ -160,7 +159,7 @@ class Agent:
         except Exception as e:
             raise AgentError(
                 PROCESSING_FAILED,
-                f"Failed to register with registry at {registry_obj.endpoint}: {e}"
+                f"Failed to register with registry '{registry_obj.name}': {e}"
             ) from e
 
     async def search(self, query: str, registry: Optional[Union[str, AgentRegistry]] = None) -> List[AgentInfo]:
@@ -179,7 +178,7 @@ class Agent:
         except Exception as e:
             raise AgentError(
                 PROCESSING_FAILED,
-                f"Failed to search for agents with query '{query}' from registry at {registry_obj.endpoint}: {e}"
+                f"Failed to search for agents with query '{query}' from registry '{registry_obj.name}': {e}"
             ) from e
 
     async def public_key(self, agent_id: str) -> str | None:

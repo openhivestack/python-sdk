@@ -1,5 +1,6 @@
 import json
 import uuid
+import base64
 from .agent_config import AgentConfig
 from .agent_signature import AgentSignature
 from .types import AgentMessageType
@@ -8,8 +9,9 @@ from .types import AgentMessageType
 class AgentIdentity:
     def __init__(self, config: AgentConfig):
         self.config = config
-        self.private_key = config.keys['privateKey'].encode('utf-8')
-        self.public_key = config.keys['publicKey'].encode('utf-8')
+        self.private_key_pem = base64.b64decode(config.keys['privateKey']).decode('utf-8')
+        self.public_key_pem = base64.b64decode(config.keys['publicKey']).decode('utf-8')
+        self.public_key_pem_b64 = config.keys['publicKey']
 
     @classmethod
     def create(cls, config: AgentConfig):
@@ -21,8 +23,8 @@ class AgentIdentity:
     def name(self) -> str:
         return self.config.name
         
-    def get_public_key_b64(self) -> str:
-        return self.public_key.decode('utf-8')
+    def get_public_key_pem_b64(self) -> str:
+        return self.public_key_pem_b64
 
     def _create_message(
         self,
@@ -37,7 +39,7 @@ class AgentIdentity:
             "data": data,
         }
         
-        signature = AgentSignature.sign(message_without_sig, self.private_key)
+        signature = AgentSignature.sign(message_without_sig, self.private_key_pem)
         
         return {**message_without_sig, "sig": signature}
 
@@ -97,7 +99,7 @@ class AgentIdentity:
         )
 
     def verify_message(
-        self, message: dict, public_key: bytes,
+        self, message: dict, public_key_pem: str,
     ) -> bool:
         message_copy = message.copy()
         signature = message_copy.pop("sig")
@@ -105,5 +107,5 @@ class AgentIdentity:
         return AgentSignature.verify(
             message_copy,
             signature,
-            public_key,
+            public_key_pem,
         )

@@ -32,8 +32,12 @@ class AgentSignature:
     def sign(message: bytes, private_key: str) -> str:
         """Signs a message using an Ed25519 private key in PEM format."""
         try:
+            private_key_bytes = private_key
+            if isinstance(private_key, str):
+                private_key_bytes = private_key.encode('utf-8')
+
             pem_key = serialization.load_pem_private_key(
-                private_key.encode('utf-8'),
+                private_key_bytes,
                 password=None
             )
             raw_private_key = pem_key.private_bytes_raw()
@@ -47,8 +51,12 @@ class AgentSignature:
     def verify(message: bytes, signature: str, public_key: str) -> bool:
         """Verifies a message signature using an Ed25519 public key in PEM format."""
         try:
+            public_key_bytes = public_key
+            if isinstance(public_key, str):
+                public_key_bytes = public_key.encode('utf-8')
+
             pem_key = serialization.load_pem_public_key(
-                public_key.encode('utf-8')
+                public_key_bytes
             )
             raw_public_key = pem_key.public_bytes_raw()
             verify_key = VerifyKey(raw_public_key)

@@ -32,7 +32,7 @@ class RemoteRegistry(AgentRegistry):
     async def get(self, agent_id: str) -> Optional[AgentInfo]:
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.get(f"{self.endpoint}/registry/get/{agent_id}")
+                response = await client.get(f"{self.endpoint}/registry/{agent_id}")
                 if response.status_code == 404:
                     return None
                 response.raise_for_status()

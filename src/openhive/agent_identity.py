@@ -25,7 +25,7 @@ class AgentIdentity:
     def get_public_key(self) -> str:
         return self.public_key
 
-    def _create_message(
+    async def _create_message(
         self,
         to_agent_id: str,
         msg_type: AgentMessageType,
@@ -38,11 +38,11 @@ class AgentIdentity:
             "data": data,
         }
         
-        signature = AgentSignature.sign(message_without_sig, self.private_key)
+        signature = await AgentSignature.sign(message_without_sig, self.private_key)
         
         return {**message_without_sig, "sig": signature}
 
-    def createTaskRequest(
+    async def createTaskRequest(
         self,
         to_agent_id: str,
         capability: str,
@@ -54,13 +54,13 @@ class AgentIdentity:
             "capability": capability,
             "params": params,
         }
-        return self._create_message(
+        return await self._create_message(
             to_agent_id,
             AgentMessageType.TASK_REQUEST,
             data,
         )
 
-    def createTaskResult(
+    async def createTaskResult(
         self,
         to_agent_id: str,
         task_id: str,
@@ -71,13 +71,13 @@ class AgentIdentity:
             "status": "completed",
             "result": result,
         }
-        return self._create_message(
+        return await self._create_message(
             to_agent_id,
             AgentMessageType.TASK_RESULT,
             data,
         )
 
-    def createTaskError(
+    async def createTaskError(
         self,
         to_agent_id: str,
         task_id: str,
@@ -91,19 +91,19 @@ class AgentIdentity:
             "message": message,
             "retry": retry,
         }
-        return self._create_message(
+        return await self._create_message(
             to_agent_id,
             AgentMessageType.TASK_ERROR,
             data,
         )
 
-    def verify_message(
+    async def verify_message(
         self, message: dict, public_key: bytes,
     ) -> bool:
         message_copy = message.copy()
         signature = message_copy.pop("sig")
 
-        return AgentSignature.verify(
+        return await AgentSignature.verify(
             message_copy,
             signature,
             public_key,

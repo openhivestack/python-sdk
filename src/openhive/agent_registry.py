@@ -1,7 +1,11 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
+
 from .types import AgentInfo
 from .query_parser import QueryParser
+from .log import get_logger
+
+log = get_logger(__name__)
 
 
 class AgentRegistry(ABC):
@@ -45,6 +49,7 @@ class InMemoryRegistry(AgentRegistry):
         self._name = name
         self._endpoint = endpoint
         self._agents: dict[str, AgentInfo] = {}
+        log.info(f"In-memory registry '{name}' initialized")
 
     @property
     def name(self) -> str:
@@ -55,27 +60,37 @@ class InMemoryRegistry(AgentRegistry):
         return self._endpoint
     
     async def add(self, agent_info: AgentInfo):
+        log.info(f"Adding agent {agent_info.id} to registry '{self.name}'")
         self._agents[agent_info.id] = agent_info
 
     async def get(self, agent_id: str) -> Optional[AgentInfo]:
-        return self._agents.get(agent_id)
+        log.info(f"Getting agent {agent_id} from registry '{self.name}'")
+        agent = self._agents.get(agent_id)
+        if not agent:
+            log.warning(f"Agent {agent_id} not found in registry '{self.name}'")
+        return agent
 
     async def remove(self, agent_id: str):
+        log.info(f"Removing agent {agent_id} from registry '{self.name}'")
         if agent_id in self._agents:
             del self._agents[agent_id]
 
     async def list(self) -> List[AgentInfo]:
+        log.info(f"Listing all agents in registry '{self.name}'")
         return list(self._agents.values())
 
     async def update(self, agent_info: AgentInfo):
+        log.info(f"Updating agent {agent_info.id} in registry '{self.name}'")
         if agent_info.id in self._agents:
             self._agents[agent_info.id] = agent_info
 
     async def search(self, query: str) -> List[AgentInfo]:
+        log.info(f"Searching for '{query}' in registry '{self.name}'")
         parsed_query = QueryParser.parse(query)
         agents = list(self._agents.values())
 
         if not query or not query.strip():
+            log.info("Empty query, returning all agents")
             return agents
 
         def matches(agent: AgentInfo) -> bool:
@@ -108,4 +123,6 @@ class InMemoryRegistry(AgentRegistry):
 
             return general_match and field_match
 
-        return [agent for agent in agents if matches(agent)]
+        results = [agent for agent in agents if matches(agent)]
+        log.info(f"Search for '{query}' returned {len(results)} results")
+        return results

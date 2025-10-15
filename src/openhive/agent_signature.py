@@ -5,6 +5,10 @@ from cryptography.exceptions import InvalidSignature
 from typing import Dict, Any
 import canonicaljson
 
+from .log import get_logger
+
+log = get_logger(__name__)
+
 # Define consistent types for keys and payloads
 JSONObject = Dict[str, Any]
 KeyBase64Url = str
@@ -37,6 +41,7 @@ class AgentSignature:
         :param payload: The JSON object (dict) to canonicalize.
         :return: The canonical JSON string encoded as UTF-8 bytes.
         """
+        log.debug("Canonicalizing payload for signing/verification.")
         # canonicaljson.encode_canonical_json handles deterministic key sorting,
         # consistent whitespace, and UTF-8 encoding, returning bytes directly.
         return canonicaljson.encode_canonical_json(payload)
@@ -52,6 +57,7 @@ class AgentSignature:
 
         :return: A dictionary with 'privateKey' and 'publicKey' strings.
         """
+        log.info("Generating new Ed25519 key pair...")
         private_key = ed25519.Ed25519PrivateKey.generate()
         
         # 1. Export private key as PKCS#8 DER bytes
@@ -67,6 +73,7 @@ class AgentSignature:
             format=serialization.PublicFormat.SubjectPublicKeyInfo
         )
 
+        log.info("Key pair generated successfully.")
         # 3. Return keys in the exact dictionary structure
         return {
             'privateKey': AgentSignature._to_base64(private_bytes),
@@ -86,26 +93,31 @@ class AgentSignature:
     @staticmethod
     def sign(message: JSONObject, private_key: KeyBase64Url) -> str:
         """Signs a canonicalized JSON object."""
+        log.info("Signing message...")
         data_to_sign = AgentSignature.canonicalize(message)
         
         private_key = AgentSignature._load_private_key(private_key)
         signature = private_key.sign(data_to_sign)
         
+        log.info("Signature generated successfully.")
         return AgentSignature._to_base64(signature)
 
     @staticmethod
     def verify(message: JSONObject, signature: str, public_key: KeyBase64Url) -> bool:
         """Verifies a signature against a canonicalized JSON object."""
+        log.info("Verifying message signature...")
         try:
             data_to_verify = AgentSignature.canonicalize(message)
             public_key = AgentSignature._load_public_key(public_key)
             signature = AgentSignature._to_buffer(signature)
             
             public_key.verify(signature, data_to_verify)
+            log.info("Signature verification successful.")
             return True
         except InvalidSignature:
+            log.warning("Signature verification failed: InvalidSignature.")
             return False
         except Exception as e:
             # Handle key decoding/loading errors
-            print(f"An error occurred during verification: {e}")
+            log.error(f"An error occurred during verification: {e}", exc_info=True)
             return False

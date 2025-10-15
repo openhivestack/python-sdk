@@ -1,7 +1,13 @@
+import json
 import uuid
+import base64
+
 from .agent_config import AgentConfig
 from .agent_signature import AgentSignature
 from .types import AgentMessageType
+from .log import get_logger
+
+log = get_logger(__name__)
 
 
 class AgentIdentity:
@@ -9,19 +15,15 @@ class AgentIdentity:
         self.config = config
         self.private_key = config.keys['privateKey']
         self.public_key = config.keys['publicKey']
+        log.info(f"AgentIdentity initialized for agent: {self.id()}")
 
     @classmethod
     def create(cls, config: AgentConfig):
+        log.info("Creating new AgentIdentity")
         return cls(config)
 
     def id(self) -> str:
         return self.config.id
-
-    def name(self) -> str:
-        return self.config.name
-        
-    def get_public_key(self) -> str:
-        return self.public_key
 
     def _create_message(
         self,
@@ -36,6 +38,7 @@ class AgentIdentity:
             "data": data,
         }
         
+        log.info(f"Signing message to {to_agent_id} of type {msg_type.value}")
         signature = AgentSignature.sign(message_without_sig, self.private_key)
         
         return {**message_without_sig, "sig": signature}
@@ -47,8 +50,10 @@ class AgentIdentity:
         params: dict,
         task_id: str = None,
     ) -> dict:
+        task_id = task_id or str(uuid.uuid4())
+        log.info(f"Creating task request for capability '{capability}' with task ID: {task_id}")
         data = {
-            "task_id": task_id or str(uuid.uuid4()),
+            "task_id": task_id,
             "capability": capability,
             "params": params,
         }
@@ -64,6 +69,7 @@ class AgentIdentity:
         task_id: str,
         result: dict,
     ) -> dict:
+        log.info(f"Creating task result for task '{task_id}'")
         data = {
             "task_id": task_id,
             "status": "completed",
@@ -79,14 +85,13 @@ class AgentIdentity:
         self,
         to_agent_id: str,
         task_id: str,
-        error: str,
-        message: str,
+        error: dict,
         retry: bool,
     ) -> dict:
+        log.info(f"Creating task error for task '{task_id}'")
         data = {
             "task_id": task_id,
             "error": error,
-            "message": message,
             "retry": retry,
         }
         return self._create_message(
@@ -98,11 +103,14 @@ class AgentIdentity:
     def verify_message(
         self, message: dict, public_key: bytes,
     ) -> bool:
+        log.info(f"Verifying message signature from '{message.get('from')}'")
         message_copy = message.copy()
         signature = message_copy.pop("sig")
 
-        return AgentSignature.verify(
+        is_valid = AgentSignature.verify(
             message_copy,
             signature,
             public_key,
         )
+        log.info(f"Signature from '{message.get('from')}' is {'valid' if is_valid else 'invalid'}")
+        return is_valid

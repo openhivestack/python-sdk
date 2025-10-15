@@ -9,7 +9,7 @@ from .types import AgentMessageType
 class AgentIdentity:
     def __init__(self, config: AgentConfig):
         self.config = config
-        self.private_key = base64.b64decode(config.keys['privateKey']).decode('utf-8')
+        self.private_key = base64.b64decode(config.keys['privateKey'])
         self.public_key = config.keys['publicKey']
 
     @classmethod
@@ -98,7 +98,7 @@ class AgentIdentity:
         )
 
     def verify_message(
-        self, message: dict, public_key: str,
+        self, message: dict, public_key: bytes,
     ) -> bool:
         message_copy = message.copy()
         signature = message_copy.pop("sig")

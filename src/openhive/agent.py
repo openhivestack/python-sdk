@@ -84,9 +84,9 @@ class Agent:
         sender_public_key: str,
     ) -> dict:
         task_id = message.get("data", {}).get("task_id", "unknown")
-        public_key_pem = base64.b64decode(sender_public_key).decode('utf-8')
+        public_key_bytes = base64.b64decode(sender_public_key)
 
-        if not self.identity.verify_message(message, public_key_pem):
+        if not self.identity.verify_message(message, public_key_bytes):
             return self._create_error_response(
                 task_id,
                 INVALID_SIGNATURE,
@@ -226,9 +226,9 @@ class Agent:
 
             response.raise_for_status()
             response_data = response.json()
-            public_key_pem = base64.b64decode(target_agent.keys.public_key).decode('utf-8')
+            public_key_bytes = base64.b64decode(target_agent.keys.public_key)
 
-            if not self.identity.verify_message(response_data, public_key_pem):
+            if not self.identity.verify_message(response_data, public_key_bytes):
                 raise AgentError(INVALID_SIGNATURE, "Response signature verification failed.")
 
             return response_data['data']

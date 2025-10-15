@@ -9,7 +9,7 @@ from .types import AgentMessageType
 class AgentIdentity:
     def __init__(self, config: AgentConfig):
         self.config = config
-        self.private_key = base64.b64decode(config.keys['privateKey'])
+        self.private_key = config.keys['privateKey']
         self.public_key = config.keys['publicKey']
 
     @classmethod
@@ -42,7 +42,7 @@ class AgentIdentity:
         
         return {**message_without_sig, "sig": signature}
 
-    async def createTaskRequest(
+    def createTaskRequest(
         self,
         to_agent_id: str,
         capability: str,
@@ -54,13 +54,13 @@ class AgentIdentity:
             "capability": capability,
             "params": params,
         }
-        return await self._create_message(
+        return self._create_message(
             to_agent_id,
             AgentMessageType.TASK_REQUEST,
             data,
         )
 
-    async def createTaskResult(
+    def createTaskResult(
         self,
         to_agent_id: str,
         task_id: str,
@@ -71,13 +71,13 @@ class AgentIdentity:
             "status": "completed",
             "result": result,
         }
-        return await self._create_message(
+        return self._create_message(
             to_agent_id,
             AgentMessageType.TASK_RESULT,
             data,
         )
 
-    async def createTaskError(
+    def createTaskError(
         self,
         to_agent_id: str,
         task_id: str,
@@ -91,19 +91,19 @@ class AgentIdentity:
             "message": message,
             "retry": retry,
         }
-        return await self._create_message(
+        return self._create_message(
             to_agent_id,
             AgentMessageType.TASK_ERROR,
             data,
         )
 
-    async def verify_message(
+    def verify_message(
         self, message: dict, public_key: bytes,
     ) -> bool:
         message_copy = message.copy()
         signature = message_copy.pop("sig")
 
-        return await AgentSignature.verify(
+        return AgentSignature.verify(
             message_copy,
             signature,
             public_key,

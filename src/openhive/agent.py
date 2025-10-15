@@ -210,7 +210,7 @@ class Agent:
         if not target_agent.endpoint:
             raise AgentError(CONFIG_ERROR, f"Endpoint for agent {to_agent_id} not configured.")
 
-        task_request = await self.identity.createTaskRequest(
+        task_request = self.identity.createTaskRequest(
             to_agent_id,
             capability,
             params,
@@ -226,9 +226,8 @@ class Agent:
 
             response.raise_for_status()
             response_data = response.json()
-            public_key_bytes = base64.b64decode(target_agent.keys.public_key)
 
-            if not await self.identity.verify_message(response_data, public_key_bytes):
+            if not self.identity.verify_message(response_data, target_agent.keys.public_key):
                 raise AgentError(INVALID_SIGNATURE, "Response signature verification failed.")
 
             return response_data['data']

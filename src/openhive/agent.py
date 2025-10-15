@@ -84,9 +84,8 @@ class Agent:
         sender_public_key: str,
     ) -> dict:
         task_id = message.get("data", {}).get("task_id", "unknown")
-        public_key_bytes = base64.b64decode(sender_public_key)
 
-        if not await self.identity.verify_message(message, public_key_bytes):
+        if not self.identity.verify_message(message, sender_public_key):
             return self._create_error_response(
                 task_id,
                 INVALID_SIGNATURE,
@@ -187,9 +186,6 @@ class Agent:
         if agent_info:
             return agent_info.keys.public_key
         return None
-
-    def identity(self) -> AgentIdentity:
-        return self.identity
 
     def endpoint(self) -> str:
         return self.config.endpoint

@@ -14,7 +14,7 @@ class AgentServer:
     def _setup_routes(self):
         @self.app.get("/status")
         async def get_status():
-            identity = self.agent.identity()
+            identity = self.agent.identity
             return {
                 "agentId": identity.id(),
                 "status": "ok",
@@ -23,7 +23,7 @@ class AgentServer:
 
         @self.app.get("/capabilities")
         async def get_capabilities():
-            identity = self.agent.identity()
+            identity = self.agent.identity
             return {
                 "agentId": identity.id(),
                 "capabilities": [
@@ -105,7 +105,7 @@ class AgentServer:
                 sender_public_key,
             )
 
-            identity = self.agent.identity()
+            identity = self.agent.identity
 
             if "error" in response_data:
                 response_message = identity.createTaskError(

@@ -38,13 +38,6 @@ class AgentConfig:
                     "Missing required fields: keys.publicKey or keys.privateKey"
                 )
 
-            config_dict['keys']['publicKey'] = base64.b64decode(
-                config_dict['keys']['publicKey']
-            ).decode('utf-8')
-            config_dict['keys']['privateKey'] = base64.b64decode(
-                config_dict['keys']['privateKey']
-            ).decode('utf-8')
-
             endpoint = config_dict.get('endpoint')
             if not endpoint:
                 raise ValueError("Missing required field: endpoint")

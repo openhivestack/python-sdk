@@ -25,7 +25,7 @@ class AgentIdentity:
     def get_public_key(self) -> str:
         return self.public_key
 
-    async def _create_message(
+    def _create_message(
         self,
         to_agent_id: str,
         msg_type: AgentMessageType,
@@ -38,7 +38,7 @@ class AgentIdentity:
             "data": data,
         }
         
-        signature = await AgentSignature.sign(message_without_sig, self.private_key)
+        signature = AgentSignature.sign(message_without_sig, self.private_key)
         
         return {**message_without_sig, "sig": signature}
 

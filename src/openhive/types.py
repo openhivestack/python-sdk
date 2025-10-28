@@ -17,6 +17,7 @@ class AgentConfigStruct(BaseModel):
     version: str
     endpoint: str
     host: str
+    private: bool = True
     port: int
     public_key: Optional[str] = Field(None, alias="publicKey")
     log_level: str = Field("info", alias="logLevel")

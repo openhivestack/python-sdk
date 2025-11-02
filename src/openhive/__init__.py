@@ -1,19 +1,39 @@
 """
-H.I.V.E. Protocol Core SDK for Python
+OpenHive Core SDK for Python
 """
 __version__ = "0.8.18"
 
 from .agent import Agent
 from .agent_config import AgentConfig
-from .types import AgentCapability, AgentMessage, AgentMessageType, AgentConfigStruct
-from .agent_signature import AgentSignature
+from .agent_registry import AgentRegistry, InMemoryRegistry
+from .remote_registry import RemoteRegistry
+from .sqlite_registry import SqliteRegistry
+from .agent_error import (
+    AgentError,
+    AGENT_NOT_FOUND,
+    CAPABILITY_NOT_FOUND,
+    INVALID_MESSAGE_FORMAT,
+    INVALID_PARAMETERS,
+    INVALID_SIGNATURE,
+    PROCESSING_FAILED,
+    RATE_LIMITED,
+    RESOURCE_UNAVAILABLE,
+)
 
 __all__ = [
     "Agent",
     "AgentConfig",
-    "AgentCapability",
-    "AgentMessage",
-    "AgentMessageType",
-    "AgentConfigStruct",
-    "AgentSignature",
+    "AgentRegistry",
+    "InMemoryRegistry",
+    "RemoteRegistry",
+    "SqliteRegistry",
+    "AgentError",
+    "AGENT_NOT_FOUND",
+    "CAPABILITY_NOT_FOUND",
+    "INVALID_MESSAGE_FORMAT",
+    "INVALID_PARAMETERS",
+    "INVALID_SIGNATURE",
+    "PROCESSING_FAILED",
+    "RATE_LIMITED",
+    "RESOURCE_UNAVAILABLE",
 ]

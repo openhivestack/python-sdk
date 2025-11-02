@@ -89,6 +89,36 @@ if __name__ == "__main__":
 
 You can now run your `main.py` file. Your agent will start an HTTP server on the specified endpoint and be ready to accept `task_request` messages.
 
+## Working with Registries
+
+The OpenHive SDK for Python provides multiple agent registry implementations to suit different use cases, from local development to distributed production environments. An agent's registry is crucial for discovering and communicating with other agents.
+
+### Registry Types
+
+- **`InMemoryRegistry` (Default)**: A volatile, in-memory registry perfect for local development, testing, or simple, single-instance agent setups. All registered agent information is lost when the agent process exits.
+
+- **`RemoteRegistry`**: Allows an agent to connect to another H.I.V.E. agent that is serving as a central registry hub. This is the standard choice for multi-agent clusters where a dedicated agent acts as a discovery service.
+
+- **`SqliteRegistry`**: A file-based, persistent registry that uses an SQLite database. It's an excellent choice for scenarios where you need persistence across restarts without setting up a dedicated registry agent. It's particularly useful for agents that need to maintain a durable list of known peers.
+
+### Using the SqliteRegistry
+
+You can easily swap the default in-memory registry for a `SqliteRegistry` by passing an instance to the `Agent` constructor.
+
+```python
+from openhive import Agent, SqliteRegistry
+
+# Create an instance of the SqliteRegistry, providing a name and file path.
+sqlite_registry = SqliteRegistry(name="main", endpoint="./agents.db")
+
+# Pass the registry instance to the Agent constructor.
+agent = Agent(registry=sqlite_registry)
+
+# The agent will now use the SQLite database for all registry operations.
+# You can now register the agent with its own registry.
+await agent.register()
+```
+
 ## Agent as a Registry
 
 The `AgentServer` now includes a full set of RESTful endpoints that expose the agent's internal registry, allowing any agent to serve as a discovery hub for a cluster of other agents. This enables agents to dynamically register, deregister, and discover each other over the network.
@@ -251,7 +281,7 @@ Run this in a third terminal: `python requester_agent.py`. You should see the su
 
 ## Advanced Agent Search
 
-The `InMemoryRegistry` now includes a powerful search feature that allows you to find agents using a query syntax inspired by Stripe. You can filter agents by their `name`, `id`, `description`, and `capabilities`.
+The `InMemoryRegistry` and `SqliteRegistry` now include a powerful search feature that allows you to find agents using a query syntax inspired by Stripe. You can filter agents by their `name`, `id`, `description`, and `capabilities`.
 
 #### Search by General Term
 

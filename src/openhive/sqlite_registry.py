@@ -45,7 +45,7 @@ class SqliteRegistry(AgentRegistry):
         log.info(f"Adding agent {agent_info.id} to registry '{self.name}'")
         cursor = self._conn.cursor()
         cursor.execute(
-            'INSERT INTO agents (id, name, description, version, endpoint, capabilities, public_key) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            'INSERT OR REPLACE INTO agents (id, name, description, version, endpoint, capabilities, public_key) VALUES (?, ?, ?, ?, ?, ?, ?)',
             (
                 agent_info.id,
                 agent_info.name,

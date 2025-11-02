@@ -1,7 +1,7 @@
 """
 OpenHive Core SDK for Python
 """
-__version__ = "0.9.0"
+__version__ = "0.9.1"
 
 from .agent import Agent
 from .agent_config import AgentConfig

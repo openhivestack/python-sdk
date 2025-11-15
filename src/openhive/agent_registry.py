@@ -111,46 +111,44 @@ class InMemoryRegistry(AgentRegistryAdapter):
 
     async def search(self, query: str) -> List[AgentRegistryEntry]:
         log.info(f"Searching for '{query}' in in-memory registry")
-        parsed_query = QueryParser.parse(query)
         agents = list(self._agents.values())
 
         if not query or not query.strip():
-            log.info("Empty query, returning all agents")
             return agents
 
-        def matches(agent: AgentRegistryEntry) -> bool:
-            general_match = (
-                not parsed_query.general_filters or
-                all(
-                    any(
-                        filter.term.lower() in getattr(agent, field, '' if getattr(agent, field, None) is not None else None).lower()
-                        for field in filter.fields
-                        if isinstance(getattr(agent, field, None), str)
+        parsed_query = QueryParser.parse(query)
+
+        if not parsed_query.field_filters and not parsed_query.general_filters:
+            return agents
+
+        # Apply field filters
+        for f in parsed_query.field_filters:
+            if f.operator == 'has_skill':
+                agents = [
+                    agent for agent in agents
+                    if any(
+                        s.id.lower() == f.value.lower() or s.name.lower() == f.value.lower()
+                        for s in agent.skills
                     )
-                    for filter in parsed_query.general_filters
+                ]
+            else:
+                agents = [
+                    agent for agent in agents
+                    if hasattr(agent, f.field) and f.value.lower() in str(getattr(agent, f.field)).lower()
+                ]
+
+        # Apply general text search filters
+        for f in parsed_query.general_filters:
+            agents = [
+                agent for agent in agents
+                if any(
+                    hasattr(agent, field) and f.term.lower() in str(getattr(agent, field)).lower()
+                    for field in f.fields
                 )
-            )
-
-            field_match = (
-                not parsed_query.field_filters or
-                all(
-                    (
-                        filter.value.lower() in getattr(agent, filter.field, '' if getattr(agent, filter.field, None) is not None else None).lower()
-                        if filter.operator == 'includes' and isinstance(getattr(agent, filter.field, None), str)
-                        else any(
-                            s.id.lower() == filter.value.lower() or s.name.lower() == filter.value.lower()
-                            for s in agent.skills
-                        )
-                    )
-                    for filter in parsed_query.field_filters
-                )
-            )
-
-            return general_match and field_match
-
-        results = [agent for agent in agents if matches(agent)]
-        log.info(f"Search for '{query}' returned {len(results)} results")
-        return results
+            ]
+        
+        log.info(f"Search for '{query}' returned {len(agents)} results")
+        return agents
 
     async def clear(self) -> None:
         log.info("Clearing all agents from in-memory registry")

@@ -5,6 +5,7 @@ from typing import List, Optional
 from .agent_registry import AgentRegistryAdapter
 from .types import AgentRegistryEntry, Skill
 from .log import get_logger
+from .query_parser import QueryParser
 
 log = get_logger(__name__)
 
@@ -97,26 +98,43 @@ class SqliteRegistry(AgentRegistryAdapter):
         
     async def search(self, query: str) -> List[AgentRegistryEntry]:
         log.info(f"Searching for '{query}' in SQLite registry")
-        # For production, consider SQLite's FTS5 extension for better performance
         agents = await self.list()
-        
+
         if not query or not query.strip():
             return agents
+
+        parsed_query = QueryParser.parse(query)
+
+        if not parsed_query.field_filters and not parsed_query.general_filters:
+            return agents
+
+        # Apply field filters
+        for f in parsed_query.field_filters:
+            if f.operator == 'has_skill':
+                agents = [
+                    agent for agent in agents
+                    if any(
+                        s.id.lower() == f.value.lower() or s.name.lower() == f.value.lower()
+                        for s in agent.skills
+                    )
+                ]
+            else:
+                agents = [
+                    agent for agent in agents
+                    if hasattr(agent, f.field) and f.value.lower() in str(getattr(agent, f.field)).lower()
+                ]
+
+        # Apply general text search filters
+        for f in parsed_query.general_filters:
+            agents = [
+                agent for agent in agents
+                if any(
+                    hasattr(agent, field) and f.term.lower() in str(getattr(agent, field)).lower()
+                    for field in f.fields
+                )
+            ]
             
-        lower_case_query = query.lower()
-
-        def matches(agent: AgentRegistryEntry) -> bool:
-            name_match = agent.name.lower().find(lower_case_query) != -1
-            description_match = agent.description and agent.description.lower().find(lower_case_query) != -1
-            skill_match = any(
-                s.id.lower().find(lower_case_query) != -1 or
-                s.name.lower().find(lower_case_query) != -1 or
-                (s.description and s.description.lower().find(lower_case_query) != -1)
-                for s in agent.skills
-            )
-            return name_match or description_match or skill_match
-
-        return [agent for agent in agents if matches(agent)]
+        return agents
 
     async def clear(self) -> None:
         log.info("Clearing all agents from SQLite registry")

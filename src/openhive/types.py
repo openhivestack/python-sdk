@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 
+
 class Skill(BaseModel):
     id: str
     name: str
@@ -9,6 +10,7 @@ class Skill(BaseModel):
     input: Optional[Dict[str, Any]] = {}
     output: Optional[Dict[str, Any]] = {}
 
+
 class AgentCard(BaseModel):
     name: str
     description: Optional[str] = None
@@ -16,6 +18,8 @@ class AgentCard(BaseModel):
     version: str
     url: str
     skills: List[Skill]
+    capabilities: Optional[Dict[str, bool]] = None
+
 
 # Type alias for clarity in the registry context
 AgentRegistryEntry = AgentCard

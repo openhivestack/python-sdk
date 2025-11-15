@@ -3,7 +3,7 @@ from typing import Literal, List
 
 
 class QueryFilter:
-    def __init__(self, field: str, value: str, operator: Literal['includes', 'equals', 'has_capability']):
+    def __init__(self, field: str, value: str, operator: Literal['includes', 'equals', 'has_skill']):
         self.field = field
         self.value = value
         self.operator = operator
@@ -43,11 +43,11 @@ class QueryParser:
                     field_value = field_value[1:-1]
 
                 if field and field_value:
-                    if field.lower() == 'capability':
-                        result.field_filters.append(QueryFilter('capabilities', field_value, 'has_capability'))
+                    if field.lower() == 'skill':
+                        result.field_filters.append(QueryFilter('skills', field_value, 'has_skill'))
                     else:
                         result.field_filters.append(QueryFilter(field, field_value, 'includes'))
             else:
-                result.general_filters.append(GeneralFilter(value, ['name', 'description', 'id']))
+                result.general_filters.append(GeneralFilter(value, ['name', 'description']))
         
         return result

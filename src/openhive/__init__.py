@@ -3,37 +3,22 @@ OpenHive Core SDK for Python
 """
 __version__ = "0.9.1"
 
-from .agent import Agent
-from .agent_config import AgentConfig
-from .agent_registry import AgentRegistry, InMemoryRegistry
+from .log import get_logger
+from .query_parser import QueryParser
+from .agent_registry import AgentRegistry, AgentRegistryAdapter, InMemoryRegistry
 from .remote_registry import RemoteRegistry
 from .sqlite_registry import SqliteRegistry
-from .agent_error import (
-    AgentError,
-    AGENT_NOT_FOUND,
-    CAPABILITY_NOT_FOUND,
-    INVALID_MESSAGE_FORMAT,
-    INVALID_PARAMETERS,
-    INVALID_SIGNATURE,
-    PROCESSING_FAILED,
-    RATE_LIMITED,
-    RESOURCE_UNAVAILABLE,
-)
+from .types import AgentRegistryEntry, AgentCard, Skill
 
 __all__ = [
-    "Agent",
-    "AgentConfig",
+    "get_logger",
+    "QueryParser",
     "AgentRegistry",
+    "AgentRegistryAdapter",
     "InMemoryRegistry",
     "RemoteRegistry",
     "SqliteRegistry",
-    "AgentError",
-    "AGENT_NOT_FOUND",
-    "CAPABILITY_NOT_FOUND",
-    "INVALID_MESSAGE_FORMAT",
-    "INVALID_PARAMETERS",
-    "INVALID_SIGNATURE",
-    "PROCESSING_FAILED",
-    "RATE_LIMITED",
-    "RESOURCE_UNAVAILABLE",
+    "AgentRegistryEntry",
+    "AgentCard",
+    "Skill",
 ]

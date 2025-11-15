@@ -2,158 +2,138 @@ import sqlite3
 import json
 from typing import List, Optional
 
-from .agent_registry import AgentRegistry, QueryParser
-from .types import AgentInfo, AgentKeys, AgentCapability
+from .agent_registry import AgentRegistryAdapter
+from .types import AgentRegistryEntry, Skill
 from .log import get_logger
 
 log = get_logger(__name__)
 
 
-class SqliteRegistry(AgentRegistry):
-    def __init__(self, name: str, endpoint: str):
-        self._name = name
-        self._endpoint = endpoint
-        self._conn = sqlite3.connect(endpoint)
+class SqliteRegistry(AgentRegistryAdapter):
+    def __init__(self, db_path: str):
+        self._db_path = db_path
+        self._conn = sqlite3.connect(db_path)
         self._conn.row_factory = sqlite3.Row
         self._create_table()
-        log.info(f"SQLite registry '{name}' initialized at {endpoint}")
+        log.info(f"SQLite registry initialized at {db_path}")
 
     def _create_table(self):
         cursor = self._conn.cursor()
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS agents (
-                id TEXT PRIMARY KEY,
-                name TEXT,
+                name TEXT PRIMARY KEY,
                 description TEXT,
+                protocolVersion TEXT,
                 version TEXT,
-                endpoint TEXT,
-                capabilities TEXT,
-                public_key TEXT
+                url TEXT,
+                skills TEXT
             )
         ''')
         self._conn.commit()
 
-    @property
-    def name(self) -> str:
-        return self._name
-
-    @property
-    def endpoint(self) -> str:
-        return self._endpoint
-
-    async def add(self, agent_info: AgentInfo):
-        log.info(f"Adding agent {agent_info.id} to registry '{self.name}'")
+    async def add(self, agent: AgentRegistryEntry) -> AgentRegistryEntry:
+        agent_id = agent.name
+        log.info(f"Adding agent {agent_id} to SQLite registry")
         cursor = self._conn.cursor()
-        cursor.execute(
-            'INSERT OR REPLACE INTO agents (id, name, description, version, endpoint, capabilities, public_key) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            (
-                agent_info.id,
-                agent_info.name,
-                agent_info.description,
-                agent_info.version,
-                agent_info.endpoint,
-                json.dumps([cap.dict() for cap in agent_info.capabilities]),
-                agent_info.keys.public_key,
-            ),
-        )
-        self._conn.commit()
+        try:
+            cursor.execute(
+                'INSERT INTO agents (name, description, protocolVersion, version, url, skills) VALUES (?, ?, ?, ?, ?, ?)',
+                (
+                    agent.name,
+                    agent.description,
+                    agent.protocol_version,
+                    agent.version,
+                    agent.url,
+                    json.dumps([s.dict() for s in agent.skills]),
+                ),
+            )
+            self._conn.commit()
+        except sqlite3.IntegrityError:
+            raise ValueError(f"Agent with name {agent_id} already exists.")
+        return agent
 
-    async def get(self, agent_id: str) -> Optional[AgentInfo]:
-        log.info(f"Getting agent {agent_id} from registry '{self.name}'")
+    async def get(self, agent_id: str) -> Optional[AgentRegistryEntry]:
+        log.info(f"Getting agent {agent_id} from SQLite registry")
         cursor = self._conn.cursor()
-        cursor.execute('SELECT * FROM agents WHERE id = ?', (agent_id,))
+        cursor.execute('SELECT * FROM agents WHERE name = ?', (agent_id,))
         row = cursor.fetchone()
         if not row:
-            log.warning(f"Agent {agent_id} not found in registry '{self.name}'")
             return None
-        return self._row_to_agent_info(row)
+        return self._row_to_agent(row)
 
-    async def remove(self, agent_id: str):
-        log.info(f"Removing agent {agent_id} from registry '{self.name}'")
+    async def remove(self, agent_id: str) -> None:
+        log.info(f"Removing agent {agent_id} from SQLite registry")
         cursor = self._conn.cursor()
-        cursor.execute('DELETE FROM agents WHERE id = ?', (agent_id,))
+        cursor.execute('DELETE FROM agents WHERE name = ?', (agent_id,))
         self._conn.commit()
 
-    async def list(self) -> List[AgentInfo]:
-        log.info(f"Listing all agents in registry '{self.name}'")
+    async def list(self) -> List[AgentRegistryEntry]:
+        log.info(f"Listing all agents from SQLite registry")
         cursor = self._conn.cursor()
         cursor.execute('SELECT * FROM agents')
         rows = cursor.fetchall()
-        return [self._row_to_agent_info(row) for row in rows]
+        return [self._row_to_agent(row) for row in rows]
 
-    async def update(self, agent_info: AgentInfo):
-        log.info(f"Updating agent {agent_info.id} in registry '{self.name}'")
+    async def update(self, agent_id: str, agent: AgentRegistryEntry) -> AgentRegistryEntry:
+        log.info(f"Updating agent {agent_id} in SQLite registry")
         cursor = self._conn.cursor()
         cursor.execute(
             '''
             UPDATE agents
-            SET name = ?, description = ?, version = ?, endpoint = ?, capabilities = ?, public_key = ?
-            WHERE id = ?
+            SET description = ?, protocolVersion = ?, version = ?, url = ?, skills = ?
+            WHERE name = ?
             ''',
             (
-                agent_info.name,
-                agent_info.description,
-                agent_info.version,
-                agent_info.endpoint,
-                json.dumps([cap.dict() for cap in agent_info.capabilities]),
-                agent_info.keys.public_key,
-                agent_info.id,
+                agent.description,
+                agent.protocol_version,
+                agent.version,
+                agent.url,
+                json.dumps([s.dict() for s in agent.skills]),
+                agent_id,
             ),
         )
         self._conn.commit()
+        return agent
         
-    async def search(self, query: str) -> List[AgentInfo]:
-        log.info(f"Searching for '{query}' in registry '{self.name}'")
-        # Naive in-memory search. For larger datasets, consider full-text search in SQLite.
+    async def search(self, query: str) -> List[AgentRegistryEntry]:
+        log.info(f"Searching for '{query}' in SQLite registry")
+        # For production, consider SQLite's FTS5 extension for better performance
         agents = await self.list()
         
         if not query or not query.strip():
-            log.info("Empty query, returning all agents")
             return agents
             
-        parsed_query = QueryParser.parse(query)
+        lower_case_query = query.lower()
 
-        def matches(agent: AgentInfo) -> bool:
-            general_match = (
-                not parsed_query.general_filters or
-                all(
-                    any(
-                        filter.term.lower() in getattr(agent, field, '').lower()
-                        for field in filter.fields
-                        if isinstance(getattr(agent, field, None), str)
-                    )
-                    for filter in parsed_query.general_filters
-                )
+        def matches(agent: AgentRegistryEntry) -> bool:
+            name_match = agent.name.lower().find(lower_case_query) != -1
+            description_match = agent.description and agent.description.lower().find(lower_case_query) != -1
+            skill_match = any(
+                s.id.lower().find(lower_case_query) != -1 or
+                s.name.lower().find(lower_case_query) != -1 or
+                (s.description and s.description.lower().find(lower_case_query) != -1)
+                for s in agent.skills
             )
+            return name_match or description_match or skill_match
 
-            field_match = (
-                not parsed_query.field_filters or
-                all(
-                    (
-                        filter.value.lower() in getattr(agent, filter.field, '').lower()
-                        if filter.operator == 'includes' and isinstance(getattr(agent, filter.field, None), str)
-                        else any(
-                            cap.id.lower() == filter.value.lower()
-                            for cap in agent.capabilities
-                        )
-                    )
-                    for filter in parsed_query.field_filters
-                )
-            )
+        return [agent for agent in agents if matches(agent)]
 
-            return general_match and field_match
+    async def clear(self) -> None:
+        log.info("Clearing all agents from SQLite registry")
+        cursor = self._conn.cursor()
+        cursor.execute('DELETE FROM agents')
+        self._conn.commit()
 
-        results = [agent for agent in agents if matches(agent)]
-        log.info(f"Search for '{query}' returned {len(results)} results")
-        return results
+    async def close(self) -> None:
+        log.info("Closing SQLite registry connection")
+        self._conn.close()
 
-    def _row_to_agent_info(self, row: sqlite3.Row) -> AgentInfo:
-        return AgentInfo(
-            id=row['id'],
+    def _row_to_agent(self, row: sqlite3.Row) -> AgentRegistryEntry:
+        return AgentRegistryEntry(
             name=row['name'],
             description=row['description'],
+            protocolVersion=row['protocolVersion'],
             version=row['version'],
-            endpoint=row['endpoint'],
-            capabilities=[AgentCapability(**cap) for cap in json.loads(row['capabilities'])],
-            keys=AgentKeys(publicKey=row['public_key']),
+            url=row['url'],
+            skills=[Skill(**s) for s in json.loads(row['skills'])],
         )

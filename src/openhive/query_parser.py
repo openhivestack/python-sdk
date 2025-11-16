@@ -22,8 +22,7 @@ class ParsedQuery:
 
 
 class QueryParser:
-    @staticmethod
-    def parse(query: str) -> ParsedQuery:
+    def parse(self, query: str) -> ParsedQuery:
         result = ParsedQuery()
 
         if not query or not query.strip():

@@ -5,20 +5,20 @@ __version__ = "0.10.3"
 
 from .log import get_logger
 from .query_parser import QueryParser
-from .agent_registry import AgentRegistry, AgentRegistryAdapter, InMemoryRegistry
+from .agent_registry import AgentRegistry, InMemoryRegistry
 from .remote_registry import RemoteRegistry
 from .sqlite_registry import SqliteRegistry
-from .types import AgentRegistryEntry, AgentCard, Skill
+from .types import AgentCard, Skill
+from .core import OpenHive
 
 __all__ = [
     "get_logger",
     "QueryParser",
     "AgentRegistry",
-    "AgentRegistryAdapter",
     "InMemoryRegistry",
     "RemoteRegistry",
     "SqliteRegistry",
-    "AgentRegistryEntry",
     "AgentCard",
     "Skill",
+    "OpenHive",
 ]

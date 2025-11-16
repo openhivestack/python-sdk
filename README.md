@@ -6,61 +6,149 @@ This SDK is designed to complement any A2A (Agent-to-Agent) compliant agent. Whi
 
 ## ✨ Core Features
 
-- **Agent Registry**: A robust `AgentRegistry` class for discovering and managing A2A-compliant agents.
-- **Adapter Pattern**: Easily switch between different storage backends for your registry:
-    - `InMemoryRegistry`: Perfect for local development and testing.
-    - `RemoteRegistry`: Connect to a shared OpenHive registry endpoint.
-    - `SqliteRegistry`: A simple, file-based persistent registry using Python's built-in `sqlite3`.
+- **Simplified Registry**: A robust `OpenHive` class for discovering and managing A2A-compliant agents.
+- **Flexible Backends**: Easily configure for different storage backends:
+  - **In-Memory (Default)**: Perfect for local development and testing.
+  - **Remote**: Connect to a shared OpenHive registry endpoint.
+  - **SQLite**: A simple, file-based persistent registry.
 - **Powerful Query Engine**: A flexible query parser to find agents based on their name, description, or skills.
 
 ## 🚀 Getting Started
 
-1. **Installation:**
+### Installation
 
-   ```sh
-   pip install openhive-sdk
-   ```
+```sh
+pip install openhive-sdk
+```
 
-2. **Basic Usage (In-Memory Registry):**
+### Basic Usage
 
-   ```python
-   import asyncio
-   from openhive import AgentRegistry, InMemoryRegistry, AgentCard, Skill
+The `OpenHive` class is the main entry point for all registry operations. By default, it uses a volatile in-memory registry.
 
-   async def main():
-       # 1. Initialize the registry with an adapter
-       registry = AgentRegistry(InMemoryRegistry())
+```python
+import asyncio
+from openhive import OpenHive, AgentCard, Skill
 
-       # 2. Define an agent
-       my_agent = AgentCard(
-           name='MyAwesomeAgent',
-           protocolVersion='0.3.0',
-           version='1.0.0',
-           url='http://localhost:8080',
-           skills=[Skill(id='chat', name='Chat')]
-       )
+async def main():
+    # 1. Initialize the registry.
+    # By default, it uses an in-memory store.
+    hive = OpenHive()
 
-       # 3. Add the agent to the registry
-       await registry.add(my_agent)
+    # 2. Define an agent card
+    my_agent = AgentCard(
+        name='MyAwesomeAgent',
+        protocolVersion='0.3.0',
+        version='1.0.0',
+        url='http://localhost:8080',
+        skills=[Skill(id='chat', name='Chat')]
+    )
 
-       # 4. Search for agents
-       results = await registry.search('chat')
-       print(results)
+    # 3. Add the agent to the registry
+    registered_agent = await hive.add(my_agent)
+    print('Agent added:', registered_agent)
 
-   if __name__ == "__main__":
-       asyncio.run(main())
-   ```
+    # 4. Search for agents with the 'chat' skill
+    results = await hive.search('skill:chat')
+    print('Search results:', results)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+## Registry Configurations
+
+### Remote Registry
+
+To connect to a remote registry, provide the `registry_url` in the constructor. This is the standard choice for multi-agent clusters where a dedicated agent or service acts as a discovery hub.
+
+```python
+import asyncio
+from openhive import OpenHive
+
+async def main():
+    hive = OpenHive(
+        registry_url='http://localhost:11100', # URL of the remote registry
+        auth_token='your-optional-auth-token'
+    )
+    # All operations will now be performed against the remote registry.
+    agent_list = await hive.list()
+    print(agent_list)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+### SQLite Registry
+
+For persistence across restarts without a dedicated registry server, you can use the `SqliteRegistry`. The `OpenHive` class can be configured to use any compliant registry adapter.
+
+```python
+import asyncio
+from openhive import OpenHive, SqliteRegistry, AgentCard, Skill
+
+async def main():
+    # 1. Create an instance of the SqliteRegistry.
+    sqlite_registry = SqliteRegistry(db_path='./agents.db')
+
+    # 2. Pass the custom registry to the OpenHive constructor.
+    hive = OpenHive(registry=sqlite_registry)
+
+    # The agent will now use the SQLite database for all registry operations.
+    await hive.add(
+        AgentCard(
+            name='PersistentAgent',
+            protocolVersion='0.3.0',
+            version='1.0.0',
+            url='http://localhost:8081',
+            skills=[Skill(id='store', name='Store')]
+        )
+    )
+
+    agents = await hive.list()
+    print(agents)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
 
 ## 🔎 Advanced Search
 
-The query engine allows you to find agents with specific skills or attributes.
+The query engine allows you to find agents with specific skills or attributes using a simple yet powerful syntax.
+
+### Search by General Term
+
+Provide a single term to search across an agent's `name` and `description`.
 
 ```python
-# Find agents with the 'chat' skill
-chat_agents = await registry.search('skill:chat')
+# Finds agents where 'Awesome' is in the name or description
+results = await hive.search('Awesome')
+```
 
-# Find agents with "My" in their name or description
-my_agents = await registry.search('My')
+### Search by Specific Fields
+
+Target specific fields using `field:value` syntax. You can also wrap values with spaces in quotes.
+
+```python
+# Finds agents with the name "My Awesome Agent"
+results = await hive.search('name:"My Awesome Agent"')
+```
+
+### Search by Skill
+
+You can find agents that possess a specific skill.
+
+```python
+# Finds agents with the 'chat' skill
+results = await hive.search('skill:chat')
+```
+
+### Combining Filters
+
+Combine multiple filters to create more specific queries.
+
+```python
+# Finds agents named "MyAwesomeAgent" that also have the 'chat' skill
+results = await hive.search('name:MyAwesomeAgent skill:chat')
 ```
 
 ## 🤝 Contributing

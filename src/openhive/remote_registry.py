@@ -1,14 +1,14 @@
 import httpx
 from typing import List, Optional
 
-from .agent_registry import AgentRegistryAdapter
-from .types import AgentRegistryEntry
+from .agent_registry import AgentRegistry
+from .types import AgentCard
 from .log import get_logger
 
 log = get_logger(__name__)
 
 
-class RemoteRegistry(AgentRegistryAdapter):
+class RemoteRegistry(AgentRegistry):
     def __init__(self, endpoint: str, token: Optional[str] = None):
         self._endpoint = endpoint
         self._token = token
@@ -21,7 +21,7 @@ class RemoteRegistry(AgentRegistryAdapter):
             headers["Authorization"] = f"Bearer {self._token}"
         return headers
 
-    async def add(self, agent: AgentRegistryEntry) -> AgentRegistryEntry:
+    async def add(self, agent: AgentCard) -> AgentCard:
         agent_id = agent.name
         log.info(f"Adding agent {agent_id} to remote registry")
         async with httpx.AsyncClient() as client:
@@ -31,9 +31,9 @@ class RemoteRegistry(AgentRegistryAdapter):
                 headers=self._headers,
             )
             response.raise_for_status()
-            return AgentRegistryEntry(**response.json())
+            return AgentCard(**response.json())
 
-    async def get(self, agent_id: str) -> Optional[AgentRegistryEntry]:
+    async def get(self, agent_id: str) -> Optional[AgentCard]:
         log.info(f"Getting agent {agent_id} from remote registry")
         async with httpx.AsyncClient() as client:
             response = await client.get(
@@ -42,9 +42,9 @@ class RemoteRegistry(AgentRegistryAdapter):
             if response.status_code == 404:
                 return None
             response.raise_for_status()
-            return AgentRegistryEntry(**response.json())
+            return AgentCard(**response.json())
 
-    async def remove(self, agent_id: str) -> None:
+    async def delete(self, agent_id: str) -> None:
         log.info(f"Removing agent {agent_id} from remote registry")
         async with httpx.AsyncClient() as client:
             response = await client.delete(
@@ -52,14 +52,14 @@ class RemoteRegistry(AgentRegistryAdapter):
             )
             response.raise_for_status()
 
-    async def list(self) -> List[AgentRegistryEntry]:
+    async def list(self) -> List[AgentCard]:
         log.info(f"Listing agents from remote registry")
         async with httpx.AsyncClient() as client:
             response = await client.get(f"{self._endpoint}/agents", headers=self._headers)
             response.raise_for_status()
-            return [AgentRegistryEntry(**info) for info in response.json()]
+            return [AgentCard(**info) for info in response.json()]
 
-    async def search(self, query: str) -> List[AgentRegistryEntry]:
+    async def search(self, query: str) -> List[AgentCard]:
         log.info(f"Searching for '{query}' in remote registry")
         async with httpx.AsyncClient() as client:
             response = await client.get(
@@ -68,9 +68,9 @@ class RemoteRegistry(AgentRegistryAdapter):
                 headers=self._headers,
             )
             response.raise_for_status()
-            return [AgentRegistryEntry(**info) for info in response.json()]
+            return [AgentCard(**info) for info in response.json()]
 
-    async def update(self, agent_id: str, agent: AgentRegistryEntry) -> AgentRegistryEntry:
+    async def update(self, agent_id: str, agent: AgentCard) -> AgentCard:
         log.info(f"Updating agent {agent_id} in remote registry")
         async with httpx.AsyncClient() as client:
             response = await client.put(
@@ -79,7 +79,7 @@ class RemoteRegistry(AgentRegistryAdapter):
                 headers=self._headers,
             )
             response.raise_for_status()
-            return AgentRegistryEntry(**response.json())
+            return AgentCard(**response.json())
 
     async def clear(self) -> None:
         log.warning("Clear operation is not supported on a remote registry.")

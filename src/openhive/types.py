@@ -20,8 +20,3 @@ class AgentCard(BaseModel):
     url: str
     skills: List[Skill]
     capabilities: Optional[Dict[str, bool]] = None
-
-
-# Type alias for clarity in the registry context
-class AgentRegistryEntry(AgentCard):
-    id: str  # id is required for registry entries

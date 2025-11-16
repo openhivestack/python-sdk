@@ -12,6 +12,7 @@ class Skill(BaseModel):
 
 
 class AgentCard(BaseModel):
+    id: Optional[str] = None  # Optional on creation, will be assigned by the registry
     name: str
     description: Optional[str] = None
     protocol_version: str = Field(..., alias='protocolVersion')
@@ -22,4 +23,5 @@ class AgentCard(BaseModel):
 
 
 # Type alias for clarity in the registry context
-AgentRegistryEntry = AgentCard
+class AgentRegistryEntry(AgentCard):
+    id: str  # id is required for registry entries

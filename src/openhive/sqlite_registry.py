@@ -1,5 +1,6 @@
 import sqlite3
 import json
+import uuid
 from typing import List, Optional
 
 from .agent_registry import AgentRegistryAdapter
@@ -22,7 +23,8 @@ class SqliteRegistry(AgentRegistryAdapter):
         cursor = self._conn.cursor()
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS agents (
-                name TEXT PRIMARY KEY,
+                id TEXT PRIMARY KEY,
+                name TEXT,
                 description TEXT,
                 protocolVersion TEXT,
                 version TEXT,
@@ -30,16 +32,19 @@ class SqliteRegistry(AgentRegistryAdapter):
                 skills TEXT
             )
         ''')
+        cursor.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_name ON agents (name)')
         self._conn.commit()
 
     async def add(self, agent: AgentRegistryEntry) -> AgentRegistryEntry:
-        agent_id = agent.name
-        log.info(f"Adding agent {agent_id} to SQLite registry")
+        if not agent.id:
+            agent.id = str(uuid.uuid4())
+        log.info(f"Adding agent {agent.name} ({agent.id}) to SQLite registry")
         cursor = self._conn.cursor()
         try:
             cursor.execute(
-                'INSERT INTO agents (name, description, protocolVersion, version, url, skills) VALUES (?, ?, ?, ?, ?, ?)',
+                'INSERT INTO agents (id, name, description, protocolVersion, version, url, skills) VALUES (?, ?, ?, ?, ?, ?, ?)',
                 (
+                    agent.id,
                     agent.name,
                     agent.description,
                     agent.protocol_version,
@@ -50,13 +55,13 @@ class SqliteRegistry(AgentRegistryAdapter):
             )
             self._conn.commit()
         except sqlite3.IntegrityError:
-            raise ValueError(f"Agent with name {agent_id} already exists.")
+            raise ValueError(f"Agent with name {agent.name} already exists.")
         return agent
 
     async def get(self, agent_id: str) -> Optional[AgentRegistryEntry]:
         log.info(f"Getting agent {agent_id} from SQLite registry")
         cursor = self._conn.cursor()
-        cursor.execute('SELECT * FROM agents WHERE name = ?', (agent_id,))
+        cursor.execute('SELECT * FROM agents WHERE id = ?', (agent_id,))
         row = cursor.fetchone()
         if not row:
             return None
@@ -65,7 +70,7 @@ class SqliteRegistry(AgentRegistryAdapter):
     async def remove(self, agent_id: str) -> None:
         log.info(f"Removing agent {agent_id} from SQLite registry")
         cursor = self._conn.cursor()
-        cursor.execute('DELETE FROM agents WHERE name = ?', (agent_id,))
+        cursor.execute('DELETE FROM agents WHERE id = ?', (agent_id,))
         self._conn.commit()
 
     async def list(self) -> List[AgentRegistryEntry]:
@@ -81,10 +86,11 @@ class SqliteRegistry(AgentRegistryAdapter):
         cursor.execute(
             '''
             UPDATE agents
-            SET description = ?, protocolVersion = ?, version = ?, url = ?, skills = ?
-            WHERE name = ?
+            SET name = ?, description = ?, protocolVersion = ?, version = ?, url = ?, skills = ?
+            WHERE id = ?
             ''',
             (
+                agent.name,
                 agent.description,
                 agent.protocol_version,
                 agent.version,
@@ -148,6 +154,7 @@ class SqliteRegistry(AgentRegistryAdapter):
 
     def _row_to_agent(self, row: sqlite3.Row) -> AgentRegistryEntry:
         return AgentRegistryEntry(
+            id=row['id'],
             name=row['name'],
             description=row['description'],
             protocolVersion=row['protocolVersion'],

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
+import uuid
 
 from .types import AgentRegistryEntry
 from .query_parser import QueryParser
@@ -76,17 +77,22 @@ class AgentRegistry:
     def adapter(self) -> AgentRegistryAdapter:
         return self._adapter
 
+
 class InMemoryRegistry(AgentRegistryAdapter):
     def __init__(self):
         self._agents: dict[str, AgentRegistryEntry] = {}
         log.info("In-memory registry initialized")
 
     async def add(self, agent: AgentRegistryEntry) -> AgentRegistryEntry:
-        agent_id = agent.name
-        log.info(f"Adding agent {agent_id} to in-memory registry")
-        if agent_id in self._agents:
-            raise ValueError(f"Agent with name {agent_id} already exists.")
-        self._agents[agent_id] = agent
+        # Ensure name is unique
+        for existing_agent in self._agents.values():
+            if existing_agent.name == agent.name:
+                raise ValueError(f"Agent with name {agent.name} already exists.")
+
+        if not agent.id:
+            agent.id = str(uuid.uuid4())
+        log.info(f"Adding agent {agent.name} ({agent.id}) to in-memory registry")
+        self._agents[agent.id] = agent
         return agent
 
     async def get(self, agent_id: str) -> Optional[AgentRegistryEntry]:
@@ -105,7 +111,7 @@ class InMemoryRegistry(AgentRegistryAdapter):
     async def update(self, agent_id: str, agent_update: AgentRegistryEntry) -> AgentRegistryEntry:
         log.info(f"Updating agent {agent_id} in in-memory registry")
         if agent_id not in self._agents:
-            raise ValueError(f"Agent with name {agent_id} not found.")
+            raise ValueError(f"Agent with ID {agent_id} not found.")
         self._agents[agent_id] = agent_update
         return agent_update
 

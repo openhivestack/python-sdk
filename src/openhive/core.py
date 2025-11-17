@@ -24,17 +24,17 @@ class OpenHive:
     async def add(self, agent: AgentCard) -> AgentCard:
         return await self._registry.add(agent)
 
-    async def get(self, agent_id: str) -> Optional[AgentCard]:
-        return await self._registry.get(agent_id)
+    async def get(self, agent_name: str) -> Optional[AgentCard]:
+        return await self._registry.get(agent_name)
 
     async def list(self) -> List[AgentCard]:
         return await self._registry.list()
 
-    async def update(self, agent_id: str, agent: AgentCard) -> AgentCard:
-        return await self._registry.update(agent_id, agent)
+    async def update(self, agent_name: str, agent: AgentCard) -> AgentCard:
+        return await self._registry.update(agent_name, agent)
 
-    async def delete(self, agent_id: str) -> None:
-        await self._registry.delete(agent_id)
+    async def delete(self, agent_name: str) -> None:
+        await self._registry.delete(agent_name)
 
     async def search(self, query: str) -> List[AgentCard]:
         return await self._registry.search(query)

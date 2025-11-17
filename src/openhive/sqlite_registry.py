@@ -1,6 +1,5 @@
 import sqlite3
 import json
-import uuid
 from typing import List, Optional
 
 from .agent_registry import AgentRegistry
@@ -25,8 +24,7 @@ class SqliteRegistry(AgentRegistry):
         cursor = self._conn.cursor()
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS agents (
-                id TEXT PRIMARY KEY,
-                name TEXT,
+                name TEXT PRIMARY KEY,
                 description TEXT,
                 protocolVersion TEXT,
                 version TEXT,
@@ -34,19 +32,15 @@ class SqliteRegistry(AgentRegistry):
                 skills TEXT
             )
         ''')
-        cursor.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_name ON agents (name)')
         self._conn.commit()
 
     async def add(self, agent: AgentCard) -> AgentCard:
-        if not agent.id:
-            agent.id = str(uuid.uuid4())
-        log.info(f"Adding agent {agent.name} ({agent.id}) to SQLite registry")
+        log.info(f"Adding agent {agent.name} to SQLite registry")
         cursor = self._conn.cursor()
         try:
             cursor.execute(
-                'INSERT INTO agents (id, name, description, protocolVersion, version, url, skills) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                'INSERT INTO agents (name, description, protocolVersion, version, url, skills) VALUES (?, ?, ?, ?, ?, ?)',
                 (
-                    agent.id,
                     agent.name,
                     agent.description,
                     agent.protocol_version,
@@ -60,19 +54,19 @@ class SqliteRegistry(AgentRegistry):
             raise ValueError(f"Agent with name {agent.name} already exists.")
         return agent
 
-    async def get(self, agent_id: str) -> Optional[AgentCard]:
-        log.info(f"Getting agent {agent_id} from SQLite registry")
+    async def get(self, agent_name: str) -> Optional[AgentCard]:
+        log.info(f"Getting agent {agent_name} from SQLite registry")
         cursor = self._conn.cursor()
-        cursor.execute('SELECT * FROM agents WHERE id = ?', (agent_id,))
+        cursor.execute('SELECT * FROM agents WHERE name = ?', (agent_name,))
         row = cursor.fetchone()
         if not row:
             return None
         return self._row_to_agent(row)
 
-    async def delete(self, agent_id: str) -> None:
-        log.info(f"Removing agent {agent_id} from SQLite registry")
+    async def delete(self, agent_name: str) -> None:
+        log.info(f"Removing agent {agent_name} from SQLite registry")
         cursor = self._conn.cursor()
-        cursor.execute('DELETE FROM agents WHERE id = ?', (agent_id,))
+        cursor.execute('DELETE FROM agents WHERE name = ?', (agent_name,))
         self._conn.commit()
 
     async def list(self) -> List[AgentCard]:
@@ -82,23 +76,22 @@ class SqliteRegistry(AgentRegistry):
         rows = cursor.fetchall()
         return [self._row_to_agent(row) for row in rows]
 
-    async def update(self, agent_id: str, agent: AgentCard) -> AgentCard:
-        log.info(f"Updating agent {agent_id} in SQLite registry")
+    async def update(self, agent_name: str, agent: AgentCard) -> AgentCard:
+        log.info(f"Updating agent {agent_name} in SQLite registry")
         cursor = self._conn.cursor()
         cursor.execute(
             '''
             UPDATE agents
-            SET name = ?, description = ?, protocolVersion = ?, version = ?, url = ?, skills = ?
-            WHERE id = ?
+            SET description = ?, protocolVersion = ?, version = ?, url = ?, skills = ?
+            WHERE name = ?
             ''',
             (
-                agent.name,
                 agent.description,
                 agent.protocol_version,
                 agent.version,
                 agent.url,
                 json.dumps([s.dict() for s in agent.skills]),
-                agent_id,
+                agent_name,
             ),
         )
         self._conn.commit()
@@ -156,7 +149,6 @@ class SqliteRegistry(AgentRegistry):
 
     def _row_to_agent(self, row: sqlite3.Row) -> AgentCard:
         return AgentCard(
-            id=row['id'],
             name=row['name'],
             description=row['description'],
             protocolVersion=row['protocolVersion'],

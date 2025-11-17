@@ -15,11 +15,11 @@ class AgentRegistry(ABC):
         pass
 
     @abstractmethod
-    async def get(self, agent_id: str) -> Optional[AgentCard]:
+    async def get(self, agent_name: str) -> Optional[AgentCard]:
         pass
 
     @abstractmethod
-    async def delete(self, agent_id: str) -> None:
+    async def delete(self, agent_name: str) -> None:
         pass
 
     @abstractmethod
@@ -31,7 +31,7 @@ class AgentRegistry(ABC):
         pass
 
     @abstractmethod
-    async def update(self, agent_id: str, agent: AgentCard) -> AgentCard:
+    async def update(self, agent_name: str, agent: AgentCard) -> AgentCard:
         pass
 
     @abstractmethod
@@ -51,34 +51,31 @@ class InMemoryRegistry(AgentRegistry):
 
     async def add(self, agent: AgentCard) -> AgentCard:
         # Ensure name is unique
-        for existing_agent in self._agents.values():
-            if existing_agent.name == agent.name:
-                raise ValueError(f"Agent with name {agent.name} already exists.")
+        if agent.name in self._agents:
+            raise ValueError(f"Agent with name {agent.name} already exists.")
 
-        if not agent.id:
-            agent.id = str(uuid.uuid4())
-        log.info(f"Adding agent {agent.name} ({agent.id}) to in-memory registry")
-        self._agents[agent.id] = agent
+        log.info(f"Adding agent {agent.name} to in-memory registry")
+        self._agents[agent.name] = agent
         return agent
 
-    async def get(self, agent_id: str) -> Optional[AgentCard]:
-        log.info(f"Getting agent {agent_id} from in-memory registry")
-        return self._agents.get(agent_id)
+    async def get(self, agent_name: str) -> Optional[AgentCard]:
+        log.info(f"Getting agent {agent_name} from in-memory registry")
+        return self._agents.get(agent_name)
 
-    async def delete(self, agent_id: str) -> None:
-        log.info(f"Removing agent {agent_id} from in-memory registry")
-        if agent_id in self._agents:
-            del self._agents[agent_id]
+    async def delete(self, agent_name: str) -> None:
+        log.info(f"Removing agent {agent_name} from in-memory registry")
+        if agent_name in self._agents:
+            del self._agents[agent_name]
 
     async def list(self) -> List[AgentCard]:
         log.info("Listing all agents in in-memory registry")
         return list(self._agents.values())
 
-    async def update(self, agent_id: str, agent_update: AgentCard) -> AgentCard:
-        log.info(f"Updating agent {agent_id} in in-memory registry")
-        if agent_id not in self._agents:
-            raise ValueError(f"Agent with ID {agent_id} not found.")
-        self._agents[agent_id] = agent_update
+    async def update(self, agent_name: str, agent_update: AgentCard) -> AgentCard:
+        log.info(f"Updating agent {agent_name} in in-memory registry")
+        if agent_name not in self._agents:
+            raise ValueError(f"Agent with name {agent_name} not found.")
+        self._agents[agent_name] = agent_update
         return agent_update
 
     async def search(self, query: str) -> List[AgentCard]:

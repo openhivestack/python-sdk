@@ -25,7 +25,7 @@ class RemoteRegistry(AgentRegistry):
         log.info(f"Adding agent {agent.name} to remote registry")
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"{self._endpoint}/agents",
+                f"{self._endpoint}/agent",
                 content=agent.json(by_alias=True),
                 headers=self._headers,
             )
@@ -36,7 +36,7 @@ class RemoteRegistry(AgentRegistry):
         log.info(f"Getting agent {agent_name} from remote registry")
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"{self._endpoint}/agents/{agent_name}", headers=self._headers
+                f"{self._endpoint}/agent/{agent_name}", headers=self._headers
             )
             if response.status_code == 404:
                 return None
@@ -47,14 +47,14 @@ class RemoteRegistry(AgentRegistry):
         log.info(f"Removing agent {agent_name} from remote registry")
         async with httpx.AsyncClient() as client:
             response = await client.delete(
-                f"{self._endpoint}/agents/{agent_name}", headers=self._headers
+                f"{self._endpoint}/agent/{agent_name}", headers=self._headers
             )
             response.raise_for_status()
 
     async def list(self) -> List[AgentCard]:
-        log.info(f"Listing agents from remote registry")
+        log.info("Listing agents from remote registry")
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self._endpoint}/agents", headers=self._headers)
+            response = await client.get(f"{self._endpoint}/agent", headers=self._headers)
             response.raise_for_status()
             return [AgentCard(**info) for info in response.json()]
 
@@ -62,7 +62,7 @@ class RemoteRegistry(AgentRegistry):
         log.info(f"Searching for '{query}' in remote registry")
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"{self._endpoint}/agents",
+                f"{self._endpoint}/agent",
                 params={'q': query},
                 headers=self._headers,
             )
@@ -73,7 +73,7 @@ class RemoteRegistry(AgentRegistry):
         log.info(f"Updating agent {agent_name} in remote registry")
         async with httpx.AsyncClient() as client:
             response = await client.put(
-                f"{self._endpoint}/agents/{agent_name}",
+                f"{self._endpoint}/agent/{agent_name}",
                 content=agent.json(by_alias=True),
                 headers=self._headers,
             )

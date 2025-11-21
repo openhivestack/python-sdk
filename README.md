@@ -68,7 +68,7 @@ from openhive import OpenHive
 async def main():
     hive = OpenHive(
         registry_url='http://localhost:11100', # URL of the remote registry
-        auth_token='your-optional-auth-token'
+        headers={'Authorization': 'Bearer your-optional-auth-token'}
     )
     # All operations will now be performed against the remote registry.
     agent_list = await hive.list()

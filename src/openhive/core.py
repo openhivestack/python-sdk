@@ -10,14 +10,14 @@ class OpenHive:
     def __init__(
         self,
         registry_url: Optional[str] = None,
-        auth_token: Optional[str] = None,
+        headers: Optional[dict] = None,
         query_parser: Optional[QueryParser] = None,
         registry: Optional[AgentRegistry] = None,
     ):
         if registry:
             self._registry = registry
         elif registry_url:
-            self._registry = RemoteRegistry(endpoint=registry_url, token=auth_token)
+            self._registry = RemoteRegistry(endpoint=registry_url, options={'headers': headers} if headers else None)
         else:
             self._registry = InMemoryRegistry(query_parser=query_parser)
 

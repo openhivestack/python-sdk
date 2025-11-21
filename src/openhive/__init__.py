@@ -1,7 +1,7 @@
 """
 OpenHive Core SDK for Python
 """
-__version__ = "0.11.2"
+__version__ = "0.11.3"
 
 from .log import get_logger
 from .query_parser import QueryParser

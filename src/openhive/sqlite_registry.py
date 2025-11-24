@@ -34,7 +34,7 @@ class SqliteRegistry(AgentRegistry):
         ''')
         self._conn.commit()
 
-    async def add(self, agent: AgentCard) -> AgentCard:
+    async def add(self, agent: AgentCard, *args, **kwargs) -> AgentCard:
         log.info(f"Adding agent {agent.name} to SQLite registry")
         cursor = self._conn.cursor()
         try:
@@ -54,7 +54,7 @@ class SqliteRegistry(AgentRegistry):
             raise ValueError(f"Agent with name {agent.name} already exists.")
         return agent
 
-    async def get(self, agent_name: str) -> Optional[AgentCard]:
+    async def get(self, agent_name: str, *args, **kwargs) -> Optional[AgentCard]:
         log.info(f"Getting agent {agent_name} from SQLite registry")
         cursor = self._conn.cursor()
         cursor.execute('SELECT * FROM agents WHERE name = ?', (agent_name,))
@@ -63,20 +63,20 @@ class SqliteRegistry(AgentRegistry):
             return None
         return self._row_to_agent(row)
 
-    async def delete(self, agent_name: str) -> None:
+    async def delete(self, agent_name: str, *args, **kwargs) -> None:
         log.info(f"Removing agent {agent_name} from SQLite registry")
         cursor = self._conn.cursor()
         cursor.execute('DELETE FROM agents WHERE name = ?', (agent_name,))
         self._conn.commit()
 
-    async def list(self) -> List[AgentCard]:
+    async def list(self, *args, **kwargs) -> List[AgentCard]:
         log.info(f"Listing all agents from SQLite registry")
         cursor = self._conn.cursor()
         cursor.execute('SELECT * FROM agents')
         rows = cursor.fetchall()
         return [self._row_to_agent(row) for row in rows]
 
-    async def update(self, agent_name: str, agent: AgentCard) -> AgentCard:
+    async def update(self, agent_name: str, agent: AgentCard, *args, **kwargs) -> AgentCard:
         log.info(f"Updating agent {agent_name} in SQLite registry")
         cursor = self._conn.cursor()
         cursor.execute(
@@ -97,7 +97,7 @@ class SqliteRegistry(AgentRegistry):
         self._conn.commit()
         return agent
         
-    async def search(self, query: str) -> List[AgentCard]:
+    async def search(self, query: str, *args, **kwargs) -> List[AgentCard]:
         log.info(f"Searching for '{query}' in SQLite registry")
         agents = await self.list()
 
@@ -137,13 +137,13 @@ class SqliteRegistry(AgentRegistry):
             
         return agents
 
-    async def clear(self) -> None:
+    async def clear(self, *args, **kwargs) -> None:
         log.info("Clearing all agents from SQLite registry")
         cursor = self._conn.cursor()
         cursor.execute('DELETE FROM agents')
         self._conn.commit()
 
-    async def close(self) -> None:
+    async def close(self, *args, **kwargs) -> None:
         log.info("Closing SQLite registry connection")
         self._conn.close()
 

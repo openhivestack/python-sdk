@@ -21,23 +21,23 @@ class OpenHive:
         else:
             self._registry = InMemoryRegistry(query_parser=query_parser)
 
-    async def add(self, agent: AgentCard) -> AgentCard:
-        return await self._registry.add(agent)
+    async def add(self, agent: AgentCard, *args, **kwargs) -> AgentCard:
+        return await self._registry.add(agent, *args, **kwargs)
 
-    async def get(self, agent_name: str) -> Optional[AgentCard]:
-        return await self._registry.get(agent_name)
+    async def get(self, agent_name: str, *args, **kwargs) -> Optional[AgentCard]:
+        return await self._registry.get(agent_name, *args, **kwargs)
 
-    async def list(self) -> List[AgentCard]:
-        return await self._registry.list()
+    async def list(self, *args, **kwargs) -> List[AgentCard]:
+        return await self._registry.list(*args, **kwargs)
 
-    async def update(self, agent_name: str, agent: AgentCard) -> AgentCard:
-        return await self._registry.update(agent_name, agent)
+    async def update(self, agent_name: str, agent: AgentCard, *args, **kwargs) -> AgentCard:
+        return await self._registry.update(agent_name, agent, *args, **kwargs)
 
-    async def delete(self, agent_name: str) -> None:
-        await self._registry.delete(agent_name)
+    async def delete(self, agent_name: str, *args, **kwargs) -> None:
+        await self._registry.delete(agent_name, *args, **kwargs)
 
-    async def search(self, query: str) -> List[AgentCard]:
-        return await self._registry.search(query)
+    async def search(self, query: str, *args, **kwargs) -> List[AgentCard]:
+        return await self._registry.search(query, *args, **kwargs)
 
-    async def close(self) -> None:
-        await self._registry.close()
+    async def close(self, *args, **kwargs) -> None:
+        await self._registry.close(*args, **kwargs)

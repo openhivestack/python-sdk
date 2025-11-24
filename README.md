@@ -151,6 +151,15 @@ Combine multiple filters to create more specific queries.
 results = await hive.search('name:MyAwesomeAgent skill:chat')
 ```
 
+## 🔧 Extensibility
+
+All registry methods (`add`, `get`, `list`, `search`, `update`, `delete`, `clear`) now accept additional arguments (`*args` and `**kwargs`), allowing you to pass custom options or context to your registry implementation.
+
+```python
+# Example: Passing a transaction ID to a custom registry
+await hive.add(my_agent, transaction_id='tx-123')
+```
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) to get started.

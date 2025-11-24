@@ -11,35 +11,35 @@ log = get_logger(__name__)
 
 class AgentRegistry(ABC):
     @abstractmethod
-    async def add(self, agent: AgentCard) -> AgentCard:
+    async def add(self, agent: AgentCard, *args, **kwargs) -> AgentCard:
         pass
 
     @abstractmethod
-    async def get(self, agent_name: str) -> Optional[AgentCard]:
+    async def get(self, agent_name: str, *args, **kwargs) -> Optional[AgentCard]:
         pass
 
     @abstractmethod
-    async def delete(self, agent_name: str) -> None:
+    async def delete(self, agent_name: str, *args, **kwargs) -> None:
         pass
 
     @abstractmethod
-    async def list(self) -> List[AgentCard]:
+    async def list(self, *args, **kwargs) -> List[AgentCard]:
         pass
 
     @abstractmethod
-    async def search(self, query: str) -> List[AgentCard]:
+    async def search(self, query: str, *args, **kwargs) -> List[AgentCard]:
         pass
 
     @abstractmethod
-    async def update(self, agent_name: str, agent: AgentCard) -> AgentCard:
+    async def update(self, agent_name: str, agent: AgentCard, *args, **kwargs) -> AgentCard:
         pass
 
     @abstractmethod
-    async def clear(self) -> None:
+    async def clear(self, *args, **kwargs) -> None:
         pass
 
     @abstractmethod
-    async def close(self) -> None:
+    async def close(self, *args, **kwargs) -> None:
         pass
 
 
@@ -49,7 +49,7 @@ class InMemoryRegistry(AgentRegistry):
         self._query_parser = query_parser or QueryParser()
         log.info("In-memory registry initialized")
 
-    async def add(self, agent: AgentCard) -> AgentCard:
+    async def add(self, agent: AgentCard, *args, **kwargs) -> AgentCard:
         # Ensure name is unique
         if agent.name in self._agents:
             raise ValueError(f"Agent with name {agent.name} already exists.")
@@ -58,27 +58,27 @@ class InMemoryRegistry(AgentRegistry):
         self._agents[agent.name] = agent
         return agent
 
-    async def get(self, agent_name: str) -> Optional[AgentCard]:
+    async def get(self, agent_name: str, *args, **kwargs) -> Optional[AgentCard]:
         log.info(f"Getting agent {agent_name} from in-memory registry")
         return self._agents.get(agent_name)
 
-    async def delete(self, agent_name: str) -> None:
+    async def delete(self, agent_name: str, *args, **kwargs) -> None:
         log.info(f"Removing agent {agent_name} from in-memory registry")
         if agent_name in self._agents:
             del self._agents[agent_name]
 
-    async def list(self) -> List[AgentCard]:
+    async def list(self, *args, **kwargs) -> List[AgentCard]:
         log.info("Listing all agents in in-memory registry")
         return list(self._agents.values())
 
-    async def update(self, agent_name: str, agent_update: AgentCard) -> AgentCard:
+    async def update(self, agent_name: str, agent_update: AgentCard, *args, **kwargs) -> AgentCard:
         log.info(f"Updating agent {agent_name} in in-memory registry")
         if agent_name not in self._agents:
             raise ValueError(f"Agent with name {agent_name} not found.")
         self._agents[agent_name] = agent_update
         return agent_update
 
-    async def search(self, query: str) -> List[AgentCard]:
+    async def search(self, query: str, *args, **kwargs) -> List[AgentCard]:
         log.info(f"Searching for '{query}' in in-memory registry")
         agents = list(self._agents.values())
 
@@ -119,10 +119,10 @@ class InMemoryRegistry(AgentRegistry):
         log.info(f"Search for '{query}' returned {len(agents)} results")
         return agents
 
-    async def clear(self) -> None:
+    async def clear(self, *args, **kwargs) -> None:
         log.info("Clearing all agents from in-memory registry")
         self._agents.clear()
 
-    async def close(self) -> None:
+    async def close(self, *args, **kwargs) -> None:
         log.info("Closing in-memory registry")
         self._agents.clear()

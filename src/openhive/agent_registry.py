@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional
-import uuid
+from typing import List, Optional, TypeVar, Generic
 
 from .types import AgentCard
 from .query_parser import QueryParser
@@ -8,14 +7,16 @@ from .log import get_logger
 
 log = get_logger(__name__)
 
+T = TypeVar('T')
 
-class AgentRegistry(ABC):
+
+class AgentRegistry(ABC, Generic[T]):
     @abstractmethod
-    async def add(self, agent: AgentCard, *args, **kwargs) -> AgentCard:
+    async def add(self, agent: AgentCard, *args, **kwargs) -> T:
         pass
 
     @abstractmethod
-    async def get(self, agent_name: str, *args, **kwargs) -> Optional[AgentCard]:
+    async def get(self, agent_name: str, *args, **kwargs) -> Optional[T]:
         pass
 
     @abstractmethod
@@ -23,15 +24,15 @@ class AgentRegistry(ABC):
         pass
 
     @abstractmethod
-    async def list(self, *args, **kwargs) -> List[AgentCard]:
+    async def list(self, *args, **kwargs) -> List[T]:
         pass
 
     @abstractmethod
-    async def search(self, query: str, *args, **kwargs) -> List[AgentCard]:
+    async def search(self, query: str, *args, **kwargs) -> List[T]:
         pass
 
     @abstractmethod
-    async def update(self, agent_name: str, agent: AgentCard, *args, **kwargs) -> AgentCard:
+    async def update(self, agent_name: str, agent: AgentCard, *args, **kwargs) -> T:
         pass
 
     @abstractmethod
@@ -43,7 +44,7 @@ class AgentRegistry(ABC):
         pass
 
 
-class InMemoryRegistry(AgentRegistry):
+class InMemoryRegistry(AgentRegistry[AgentCard]):
     def __init__(self, query_parser: Optional[QueryParser] = None):
         self._agents: dict[str, AgentCard] = {}
         self._query_parser = query_parser or QueryParser()

@@ -11,7 +11,7 @@ from .query_parser import QueryParser
 log = get_logger(__name__)
 
 
-class SqliteRegistry(AgentRegistry):
+class SqliteRegistry(AgentRegistry[AgentCard]):
     def __init__(self, db_path: str, query_parser: Optional[QueryParser] = None):
         self._db_path = db_path
         self._conn = sqlite3.connect(db_path)

@@ -8,7 +8,7 @@ from .log import get_logger
 log = get_logger(__name__)
 
 
-class RemoteRegistry(AgentRegistry):
+class RemoteRegistry(AgentRegistry[AgentCard]):
     def __init__(self, endpoint: str, options: Optional[dict] = None):
         self._endpoint = endpoint
         self._headers_config = options.get('headers', {}) if options else {}

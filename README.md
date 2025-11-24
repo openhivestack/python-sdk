@@ -160,6 +160,16 @@ All registry methods (`add`, `get`, `list`, `search`, `update`, `delete`, `clear
 await hive.add(my_agent, transaction_id='tx-123')
 ```
 
+The `OpenHive` class and `AgentRegistry` base class now also support a generic return type. This is useful if you are implementing a custom registry that returns an object extending `AgentCard` or a completely different type.
+
+```python
+# Initialize with a custom return type
+hive = OpenHive[MyCustomAgentType](registry=my_custom_registry)
+
+# The add method will now return MyCustomAgentType (or Awaitable[MyCustomAgentType])
+result = await hive.add(my_agent)
+```
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) to get started.

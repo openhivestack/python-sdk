@@ -70,12 +70,57 @@ async def main():
         registry_url='http://localhost:11100', # URL of the remote registry
         headers={'Authorization': 'Bearer your-optional-auth-token'}
     )
+
+    # You can also authenticate using an API key or specific Access Token:
+    # hive = OpenHive(
+    #     registry_url='http://localhost:11100',
+    #     api_key='your-api-key'
+    # )
+    #
+    # hive = OpenHive(
+    #     registry_url='http://localhost:11100',
+    #     access_token='your-access-token'
+    # )
+
     # All operations will now be performed against the remote registry.
     agent_list = await hive.list()
     print(agent_list)
 
+    # Pagination
+    # Get the first 10 agents
+    agents = await hive.list(page=1, limit=10)
+    print(agents)
+
+    # Search with pagination
+    results = await hive.search('skill:chat', page=1, limit=5)
+    print(results)
+
 if __name__ == "__main__":
     asyncio.run(main())
+```
+
+### Platform Integration
+
+The SDK includes extended methods for interacting with the OpenHive Platform. These methods are available when using a compatible `RemoteRegistry`.
+
+```python
+# Complete an agent upload
+await hive.complete_upload(agent_data)
+
+# Trigger a deployment
+await hive.deploy_agent('agent-name')
+
+# Get a download URL for an agent
+download_info = await hive.get_agent_download('agent-name', version_or_tag='1.0.0')
+
+# Get current user information
+user = await hive.get_current_user()
+
+# Request an upload URL
+upload_info = await hive.request_upload_url(agent_data, force=False)
+
+# Revoke an API key
+await hive.revoke_api_key('your-api-key')
 ```
 
 ### SQLite Registry

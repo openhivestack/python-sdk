@@ -43,6 +43,25 @@ class AgentRegistry(ABC, Generic[T]):
     async def close(self, *args, **kwargs) -> None:
         pass
 
+    # Optional extended methods
+    async def complete_upload(self, agent: dict, *args, **kwargs):
+        raise NotImplementedError("This registry does not support complete_upload")
+
+    async def deploy_agent(self, agent_name: str, *args, **kwargs):
+        raise NotImplementedError("This registry does not support deploy_agent")
+
+    async def get_agent_download(self, agent_name: str, *args, version_or_tag: str = 'latest', **kwargs):
+        raise NotImplementedError("This registry does not support get_agent_download")
+
+    async def get_current_user(self, *args, **kwargs):
+        raise NotImplementedError("This registry does not support get_current_user")
+
+    async def request_upload_url(self, agent: dict, force: bool, *args, **kwargs):
+        raise NotImplementedError("This registry does not support request_upload_url")
+
+    async def revoke_api_key(self, token: str, *args, **kwargs):
+        raise NotImplementedError("This registry does not support revoke_api_key")
+
 
 class InMemoryRegistry(AgentRegistry[AgentCard]):
     def __init__(self, query_parser: Optional[QueryParser] = None):
@@ -55,16 +74,16 @@ class InMemoryRegistry(AgentRegistry[AgentCard]):
         if agent.name in self._agents:
             raise ValueError(f"Agent with name {agent.name} already exists.")
 
-        log.info(f"Adding agent {agent.name} to in-memory registry")
+        log.info("Adding agent %s to in-memory registry", agent.name)
         self._agents[agent.name] = agent
         return agent
 
     async def get(self, agent_name: str, *args, **kwargs) -> Optional[AgentCard]:
-        log.info(f"Getting agent {agent_name} from in-memory registry")
+        log.info("Getting agent %s from in-memory registry", agent_name)
         return self._agents.get(agent_name)
 
     async def delete(self, agent_name: str, *args, **kwargs) -> None:
-        log.info(f"Removing agent {agent_name} from in-memory registry")
+        log.info("Removing agent %s from in-memory registry", agent_name)
         if agent_name in self._agents:
             del self._agents[agent_name]
 
@@ -72,15 +91,15 @@ class InMemoryRegistry(AgentRegistry[AgentCard]):
         log.info("Listing all agents in in-memory registry")
         return list(self._agents.values())
 
-    async def update(self, agent_name: str, agent_update: AgentCard, *args, **kwargs) -> AgentCard:
-        log.info(f"Updating agent {agent_name} in in-memory registry")
+    async def update(self, agent_name: str, agent: AgentCard, *args, **kwargs) -> AgentCard:
+        log.info("Updating agent %s in in-memory registry", agent_name)
         if agent_name not in self._agents:
             raise ValueError(f"Agent with name {agent_name} not found.")
-        self._agents[agent_name] = agent_update
-        return agent_update
+        self._agents[agent_name] = agent
+        return agent
 
     async def search(self, query: str, *args, **kwargs) -> List[AgentCard]:
-        log.info(f"Searching for '{query}' in in-memory registry")
+        log.info("Searching for '%s' in in-memory registry", query)
         agents = list(self._agents.values())
 
         if not query or not query.strip():
@@ -116,8 +135,8 @@ class InMemoryRegistry(AgentRegistry[AgentCard]):
                     for field in f.fields
                 )
             ]
-        
-        log.info(f"Search for '{query}' returned {len(agents)} results")
+
+        log.info("Search for '%s' returned %d results", query, len(agents))
         return agents
 
     async def clear(self, *args, **kwargs) -> None:

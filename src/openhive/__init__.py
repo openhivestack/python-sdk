@@ -7,7 +7,6 @@ from .log import get_logger
 from .query_parser import QueryParser
 from .agent_registry import AgentRegistry, InMemoryRegistry
 from .remote_registry import RemoteRegistry
-from .sqlite_registry import SqliteRegistry
 from .types import AgentCard, Skill
 from .core import OpenHive
 
@@ -17,7 +16,6 @@ __all__ = [
     "AgentRegistry",
     "InMemoryRegistry",
     "RemoteRegistry",
-    "SqliteRegistry",
     "AgentCard",
     "Skill",
     "OpenHive",

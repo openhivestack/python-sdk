@@ -10,7 +10,6 @@ This SDK is designed to complement any A2A (Agent-to-Agent) compliant agent. Whi
 - **Flexible Backends**: Easily configure for different storage backends:
   - **In-Memory (Default)**: Perfect for local development and testing.
   - **Remote**: Connect to a shared OpenHive registry endpoint.
-  - **SQLite**: A simple, file-based persistent registry.
 - **Powerful Query Engine**: A flexible query parser to find agents based on their name, description, or skills.
 
 ## 🚀 Getting Started
@@ -121,39 +120,6 @@ upload_info = await hive.request_upload_url(agent_data, force=False)
 
 # Revoke an API key
 await hive.revoke_api_key('your-api-key')
-```
-
-### SQLite Registry
-
-For persistence across restarts without a dedicated registry server, you can use the `SqliteRegistry`. The `OpenHive` class can be configured to use any compliant registry adapter.
-
-```python
-import asyncio
-from openhive import OpenHive, SqliteRegistry, AgentCard, Skill
-
-async def main():
-    # 1. Create an instance of the SqliteRegistry.
-    sqlite_registry = SqliteRegistry(db_path='./agents.db')
-
-    # 2. Pass the custom registry to the OpenHive constructor.
-    hive = OpenHive(registry=sqlite_registry)
-
-    # The agent will now use the SQLite database for all registry operations.
-    await hive.add(
-        AgentCard(
-            name='PersistentAgent',
-            protocolVersion='0.3.0',
-            version='1.0.0',
-            url='http://localhost:8081',
-            skills=[Skill(id='store', name='Store')]
-        )
-    )
-
-    agents = await hive.list()
-    print(agents)
-
-if __name__ == "__main__":
-    asyncio.run(main())
 ```
 
 ## 🔎 Advanced Search
